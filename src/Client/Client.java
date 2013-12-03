@@ -19,8 +19,7 @@ public class Client{
 		registry = LocateRegistry.getRegistry(serverAddress, serverPort);
 		rmiServer = (DataOperationInterface)(registry.lookup("rmiServer"));
 		
-		// Get server state for special transaction ID 0
-		if(rmiServer.getState(0) == State.ONLINE){
+		if(rmiServer.getServerState() == State.ONLINE){
 			initialized = true;
 			return true; // success
 		}else{
@@ -44,7 +43,7 @@ public class Client{
 		
 		rmiServer.commit(gid);
 		
-		if(rmiServer.getState(gid) == State.FINISH)
+		if(rmiServer.getTxnState(gid) == State.FINISH)
 			return uid;
 		else{
 			rmiServer.abort(gid);
@@ -65,7 +64,7 @@ public class Client{
 		
 		rmiServer.commit(gid);
 		
-		if(rmiServer.getState(gid) == State.FINISH)
+		if(rmiServer.getTxnState(gid) == State.FINISH)
 			return balance;
 		else{
 			return -1;
@@ -84,7 +83,7 @@ public class Client{
 		
 		double balance = rmiServer.read(uid, gid);
 		
-		if(rmiServer.getState(gid)==State.ERROR){
+		if(rmiServer.getTxnState(gid)==State.ERROR){
 			//User id not founded
 			rmiServer.abort(gid);
 			return -1;
@@ -94,7 +93,7 @@ public class Client{
 		
 		rmiServer.commit(gid);
 		
-		if(rmiServer.getState(gid) == State.FINISH)
+		if(rmiServer.getTxnState(gid) == State.FINISH)
 			return 0;
 		else{
 			return -1;
@@ -111,7 +110,7 @@ public class Client{
 		
 		double balance = rmiServer.read(uid, gid);
 		
-		if(rmiServer.getState(gid)==State.ERROR){
+		if(rmiServer.getTxnState(gid)==State.ERROR){
 			//User id not founded
 			rmiServer.abort(gid);
 			return -1;
@@ -126,7 +125,7 @@ public class Client{
 		
 		rmiServer.commit(gid);
 		
-		if(rmiServer.getState(gid) == State.FINISH)
+		if(rmiServer.getTxnState(gid) == State.FINISH)
 			return 0;
 		else{
 			return -1;
@@ -145,7 +144,7 @@ public class Client{
 
 		double balance1 = rmiServer.read(uid1, gid);
 
-		if(rmiServer.getState(gid)==State.ERROR){
+		if(rmiServer.getTxnState(gid)==State.ERROR){
 			//User id 1 not founded
 			rmiServer.abort(gid);
 			return -1;
@@ -158,7 +157,7 @@ public class Client{
 		
 		double balance2 = rmiServer.read(uid2, gid);
 		
-		if(rmiServer.getState(gid)==State.ERROR){
+		if(rmiServer.getTxnState(gid)==State.ERROR){
 			//User id 2 not founded
 			rmiServer.abort(gid);
 			return -3;
@@ -171,7 +170,7 @@ public class Client{
 
 		rmiServer.commit(gid);
 
-		if(rmiServer.getState(gid) == State.FINISH)
+		if(rmiServer.getTxnState(gid) == State.FINISH)
 			return 0;
 		else{
 			return -1;

@@ -9,7 +9,9 @@ public interface DataOperationInterface extends Remote {
 	
 	int write(int id, double value, int gid) throws RemoteException;
 	
-	State getState(int gid) throws RemoteException;
+	State getTxnState(int gid) throws RemoteException;
+	
+	State getServerState() throws RemoteException;
 	
 	int abort(int gid) throws RemoteException;
 	

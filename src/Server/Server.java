@@ -46,7 +46,7 @@ implements DataOperationInterface{
 	}
 
 	@Override
-	public State getState(int gid) throws RemoteException {
+	public State getTxnState(int gid) throws RemoteException {
 		// TODO Auto-generated method stub
 		return State.ONLINE;
 	}
@@ -73,6 +73,12 @@ implements DataOperationInterface{
 	public int getNewID() throws RemoteException {
 		// TODO Auto-generated method stub
 		return 0;
+	}
+
+	@Override
+	public State getServerState() throws RemoteException {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 
