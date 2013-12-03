@@ -5,10 +5,10 @@ import java.util.Map;
 
 public class DataManager {
 	
-	Log log;
+	private Log log;
 	//In memory log
 	
-	Map<String, Map<String, String>> rawData;
+	private Map<String, Map<String, String>> rawData;
 	// Map<TableName, Map<TupleID, TupleData>>
 	
 	public String read(String tupleID, String tableName, int gid) throws Exception{
@@ -44,6 +44,10 @@ public class DataManager {
 	
 	public void Commit(int gid){
 		this.log.Commit(gid);
+	}
+	
+	public void Begin(int gid){
+		this.log.newTransaction(gid);
 	}
 	
 }

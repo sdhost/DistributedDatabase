@@ -40,10 +40,19 @@ public class Log {
 	public LinkedList<String> Abort(int gid){
 		this.rawLog.put(serialID, String.valueOf(gid) + "\tAbort");
 		LinkedList<String> undoList = new LinkedList<String>();
-		for(int i=this.lastCommit + 1; i < this.serialID; i++)
+		
+		for(int i = serialID -1; i >= 0 ;i--){
 			undoList.push(this.rawLog.get(i));
-		this.serialID += 1;
+			if(this.rawLog.get(i).contentEquals(String.valueOf(gid) + "\tBegin"));
+				break;
+		}
+		
 		return undoList;
+	}
+	
+	public void newTransaction(int gid){
+		this.rawLog.put(serialID, String.valueOf(gid) + "\tBegin");
+		this.serialID += 1;
 	}
 
 }
