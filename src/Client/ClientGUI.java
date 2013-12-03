@@ -1,17 +1,37 @@
 package Client;
 
 import java.awt.EventQueue;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 
 import javax.swing.JFrame;
+import javax.swing.JList;
+import javax.swing.JLabel;
+import javax.swing.JButton;
+import javax.swing.JTextArea;
 
 public class ClientGUI {
 
 	private JFrame frame;
-
+	private Client client;
+	private static String serverIp;
+	private static int serverPort;
+	private JTextArea txtOutput;
+	
 	/**
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
+		args = new String[]{"127.0.0.1", "1093"};
+		if (args.length == 2) {
+			serverIp = args[0];
+			serverPort = Integer.valueOf(args[1]);
+		} else {
+			System.out.println("Please provide serverip as first argument, and serverport as second argument");
+			return;
+		}
+		
+		// Show GUI
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
@@ -29,15 +49,69 @@ public class ClientGUI {
 	 */
 	public ClientGUI() {
 		initialize();
+		client = new Client();
+		
+		// Connect to remote server
+		try {
+			if (!client.registerRMIServer(serverIp, serverPort)) {
+				log("Server is not in ONLINE state");
+			}
+		} catch (RemoteException re) {
+			log("Failed to connect to server\n" + re.toString());
+			return;
+		} catch (NotBoundException nbe) {
+			log("Failed to connect to server\n" + nbe.toString());
+			return;
+		}
+		
+		log("Connected to server");
 	}
+	
+	public void log(String text) {
+		txtOutput.setText(txtOutput.getText() + "\n" + text);
+	}
+	
 
 	/**
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
 		frame = new JFrame();
-		frame.setBounds(100, 100, 450, 300);
+		frame.setBounds(100, 100, 586, 400);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.getContentPane().setLayout(null);
+		
+		JList list = new JList();
+		list.setBounds(12, 31, 134, 173);
+		frame.getContentPane().add(list);
+		
+		JLabel lblLocalAccounts = new JLabel("Local Accounts");
+		lblLocalAccounts.setBounds(12, 12, 134, 15);
+		frame.getContentPane().add(lblLocalAccounts);
+		
+		JButton butCheckBalance = new JButton("Check balance");
+		butCheckBalance.setBounds(158, 68, 155, 25);
+		frame.getContentPane().add(butCheckBalance);
+		
+		JButton butDeposit = new JButton("Deposit");
+		butDeposit.setBounds(158, 105, 155, 25);
+		frame.getContentPane().add(butDeposit);
+		
+		JButton butWithdraw = new JButton("Withdraw");
+		butWithdraw.setBounds(158, 142, 155, 25);
+		frame.getContentPane().add(butWithdraw);
+		
+		JButton butTransfer = new JButton("Transfer");
+		butTransfer.setBounds(158, 179, 155, 25);
+		frame.getContentPane().add(butTransfer);
+		
+		txtOutput = new JTextArea();
+		txtOutput.setEditable(false);
+		txtOutput.setBounds(12, 216, 560, 143);
+		frame.getContentPane().add(txtOutput);
+		
+		JButton butCreateAccount = new JButton("Create account");
+		butCreateAccount.setBounds(158, 31, 155, 25);
+		frame.getContentPane().add(butCreateAccount);
 	}
-
 }

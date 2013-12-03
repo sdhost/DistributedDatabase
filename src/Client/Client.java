@@ -6,33 +6,26 @@ import java.rmi.*;
 import Server.DataOperationInterface;
 import Server.State;
 
-
-
 public class Client{
-
-	DataOperationInterface rmiServer;
-	Registry registry;
-	boolean initialized = false;
+	private Registry registry;
+	private boolean initialized = false;
+	private DataOperationInterface rmiServer;
 	
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
-	}
-	
-	public int registerRMIServer(String serverAddress, int serverPort) throws RemoteException, NotBoundException{
-		
+	/**
+	 * Call to connect to server using RMI
+	 */
+	public boolean registerRMIServer(String serverAddress, int serverPort) throws RemoteException, NotBoundException{
+		// Bind to the "rmiServer" on the remote instance, using RMI
 		registry = LocateRegistry.getRegistry(serverAddress, serverPort);
 		rmiServer = (DataOperationInterface)(registry.lookup("rmiServer"));
 		
-		//Get server state for special transaction ID 0
+		// Get server state for special transaction ID 0
 		if(rmiServer.getState(0) == State.ONLINE){
 			initialized = true;
-			return 0; // 0 for success
+			return true; // success
 		}else{
-			return -1; // -1 for failure
+			return false; // failure
 		}
-			
-		
 	}
 	
 	
