@@ -27,27 +27,31 @@ public class Client{
 		}
 	}
 	
-	
-	public int txnCreatingAccounts(int balance) throws RemoteException{
-		//Returning integer is the account ID
-		//Error in creating account will return negative integer
-		if(!initialized){
-			return -1;
-		}
+	/**
+	 * Inform server, to create new account
+	 * @return accountid or null in case of problems
+	 */
+	public Integer txnCreatingAccounts(int balance) throws RemoteException {
+		if (!initialized)
+			return null;
 		
-		int gid = rmiServer.newTransaction();
+		// Get global unique transaction id (=> serverid_transactionid)
+		String gid = rmiServer.newTransaction();
 		
+		// Get new userid from server - TODO: Not implemented yet!
 		int uid = rmiServer.getNewID();
 		
+		// Store balance - TODO: Not implemented yet!
 		rmiServer.write(uid, balance, gid);
 		
+		// Commit - TODO: Not implemented yet!
 		rmiServer.commit(gid);
 		
 		if(rmiServer.getTxnState(gid) == State.FINISH)
 			return uid;
 		else{
 			rmiServer.abort(gid);
-			return -1;
+			return null;
 		}
 	}
 	
@@ -58,7 +62,7 @@ public class Client{
 			return -1;
 		}
 		
-		int gid = rmiServer.newTransaction();
+		String gid = rmiServer.newTransaction();
 		
 		double balance = rmiServer.read(uid, gid);
 		
@@ -79,7 +83,7 @@ public class Client{
 			return -1;
 		}
 		
-		int gid = rmiServer.newTransaction();
+		String gid = rmiServer.newTransaction();
 		
 		double balance = rmiServer.read(uid, gid);
 		
@@ -106,7 +110,7 @@ public class Client{
 			return -1;
 		}
 		
-		int gid = rmiServer.newTransaction();
+		String gid = rmiServer.newTransaction();
 		
 		double balance = rmiServer.read(uid, gid);
 		
@@ -140,7 +144,7 @@ public class Client{
 			return -1;
 		}
 
-		int gid = rmiServer.newTransaction();
+		String gid = rmiServer.newTransaction();
 
 		double balance1 = rmiServer.read(uid1, gid);
 

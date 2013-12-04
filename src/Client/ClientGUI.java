@@ -8,7 +8,10 @@ import javax.swing.JFrame;
 import javax.swing.JList;
 import javax.swing.JLabel;
 import javax.swing.JButton;
+import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
 
 public class ClientGUI {
 
@@ -22,7 +25,7 @@ public class ClientGUI {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		args = new String[]{"127.0.0.1", "1093"};
+		args = new String[]{"127.0.0.1", "3232"};
 		if (args.length == 2) {
 			serverIp = args[0];
 			serverPort = Integer.valueOf(args[1]);
@@ -111,6 +114,21 @@ public class ClientGUI {
 		frame.getContentPane().add(txtOutput);
 		
 		JButton butCreateAccount = new JButton("Create account");
+		butCreateAccount.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				 try {
+					 String val = JOptionPane.showInputDialog ("Initial balance");
+					 if (val == null || val.length() == 0)
+						 return;
+					 Integer initBalance = Integer.valueOf(val);
+					 client.txnCreatingAccounts(initBalance);
+				 } catch (Exception ex) {
+					 log(ex.toString());
+					 return;
+				 }
+				 log("New account created");
+			}
+		});
 		butCreateAccount.setBounds(158, 31, 155, 25);
 		frame.getContentPane().add(butCreateAccount);
 	}

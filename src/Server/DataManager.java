@@ -6,8 +6,8 @@ import java.util.Map;
 public class DataManager {
 	
 	private Log log;
-	//In memory log
 	
+	//In memory log
 	private Map<String, Map<String, String>> rawData;
 	// Map<TableName, Map<TupleID, TupleData>>
 	
