@@ -6,34 +6,34 @@ import java.util.Map;
 public class DataManager {
 	
 	private Log log;
+	private Map<String, Map<String, String>> tableToTupleIdToValue; 	//In memory log
 	
-	//In memory log
-	private Map<String, Map<String, String>> rawData;
-	// Map<TableName, Map<TupleID, TupleData>>
-	
+	/**
+	 * Read from in-memory map
+	 */
 	public String read(String tupleID, String tableName, int gid) throws Exception{
-		if(!this.rawData.containsKey(tableName))
+		if(!this.tableToTupleIdToValue.containsKey(tableName))
 			throw new Exception(tableName + " not exist!");
-		if(!this.rawData.get(tableName).containsKey(tupleID))
+		if(!this.tableToTupleIdToValue.get(tableName).containsKey(tupleID))
 			throw new Exception(tupleID + " not exist in table " + tableName);
 		
 		log.newlog(gid, tupleID, tableName, null, null);
 		
-		return this.rawData.get(tableName).get(tupleID);
+		return this.tableToTupleIdToValue.get(tableName).get(tupleID);
 	}
 	
 	public void write(String tupleID, String tableName, String newValue, int gid) throws Exception{
 		String oldValue = null;
 		
-		if(!this.rawData.containsKey(tableName))
+		if(!this.tableToTupleIdToValue.containsKey(tableName))
 			throw new Exception(tableName + " not exist!");
 		
-		if(this.rawData.get(tableName).containsKey(tupleID))
-			oldValue = this.rawData.get(tableName).get(tupleID);
+		if(this.tableToTupleIdToValue.get(tableName).containsKey(tupleID))
+			oldValue = this.tableToTupleIdToValue.get(tableName).get(tupleID);
 		
 		log.newlog(gid, tupleID, tableName, oldValue, newValue);
 		
-		this.rawData.get(tableName).put(tupleID, newValue);
+		this.tableToTupleIdToValue.get(tableName).put(tupleID, newValue);
 		
 	}
 	
