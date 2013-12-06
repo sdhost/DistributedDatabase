@@ -4,6 +4,8 @@ import java.awt.EventQueue;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
+import java.text.DateFormat;
+import java.util.Date;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -58,7 +60,8 @@ public class ServerGUI {
 	}
 	
 	public static void log(String text) {
-		txtOutput.setText(txtOutput.getText() + "\n" + text);
+		Date now = new Date(System.currentTimeMillis());
+		txtOutput.setText(txtOutput.getText() + "\n" + now.toString() + ":" + text);
 	}
 
 	/**
