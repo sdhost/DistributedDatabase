@@ -14,7 +14,7 @@ public enum State {
 			//State 3 ~ 9 for 2PC state
 	FINISH(10),
 	ERROR(11),
-	WAITFORLOCK(12);
+	PROCESSING(12);
 			//State 10 ~ 12 for transaction execution state
 	private int value;
 	

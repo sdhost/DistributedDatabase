@@ -35,149 +35,132 @@ public class Client{
 		if (!initialized)
 			return null;
 		
-		// Get global unique transaction id (=> serverid_transactionid)
-		String gid = rmiServer.newTransaction();
+		String gid = rmiServer.txnCreatingAccounts(balance);
 		
-		// Get new userid from server - TODO: Not implemented yet!
-		int uid = rmiServer.getNewID();
-		
-		// Store balance - TODO: Not implemented yet!
-		rmiServer.write(uid, balance, gid);
-		
-		// Commit - TODO: Not implemented yet!
-		rmiServer.commit(gid);
-		
-		if(rmiServer.getTxnState(gid) == State.FINISH)
-			return uid;
-		else{
-			rmiServer.abort(gid);
-			return null;
+		while(true){
+			State s = rmiServer.getTxnState(gid);
+			if( s == State.FINISH)
+				return (Integer)rmiServer.getTxnResult(gid);
+			else if(s == State.ERROR){
+				//TODO: do something about the error
+				//The serve could return more information about the error
+				Object err = rmiServer.getTxnResult(gid);
+				return null;
+			}else{
+				//Still processing
+				continue;
+			}
 		}
 	}
 	
+	/**
+	 * Check the balance for account uid
+	 * @return balance or -1 in case of problems
+	 */
 	public double txnCheckingBalance(int uid) throws RemoteException{
-		//Returning the balance
-		// Error will return negative number
 		if(!initialized){
 			return -1;
 		}
 		
-		String gid = rmiServer.newTransaction();
+		String gid = rmiServer.txnCheckingBalance(uid);
 		
-		double balance = rmiServer.read(uid, gid);
-		
-		rmiServer.commit(gid);
-		
-		if(rmiServer.getTxnState(gid) == State.FINISH)
-			return balance;
-		else{
-			return -1;
+		while(true){
+			State s = rmiServer.getTxnState(gid);
+			if( s == State.FINISH)
+				return (Double)rmiServer.getTxnResult(gid);
+			else if(s == State.ERROR){
+				//TODO: do something about the error
+				//The serve could return more information about the error
+				Object err = rmiServer.getTxnResult(gid);
+				return -1;
+			}else{
+				//Still processing
+				continue;
+			}
 		}
 		
 		
 	}
 	
-	public int txnDeposit(int uid, double amount) throws RemoteException{
-		//Returning 0 for success, -1 for error
+	/**
+	 * Deposit some money to account uid
+	 * @return balance or -1 in case of problems
+	 */
+	public double txnDeposit(int uid, double amount) throws RemoteException{
 		if(!initialized){
 			return -1;
 		}
 		
-		String gid = rmiServer.newTransaction();
+		String gid = rmiServer.txnDeposit(uid, amount);
 		
-		double balance = rmiServer.read(uid, gid);
-		
-		if(rmiServer.getTxnState(gid)==State.ERROR){
-			//User id not founded
-			rmiServer.abort(gid);
-			return -1;
-		}
-		
-		rmiServer.write(uid, balance + amount, gid);
-		
-		rmiServer.commit(gid);
-		
-		if(rmiServer.getTxnState(gid) == State.FINISH)
-			return 0;
-		else{
-			return -1;
+		while(true){
+			State s = rmiServer.getTxnState(gid);
+			if( s == State.FINISH)
+				return (Double)rmiServer.getTxnResult(gid);
+			else if(s == State.ERROR){
+				//TODO: do something about the error
+				//The serve could return more information about the error
+				Object err = rmiServer.getTxnResult(gid);
+				return -1;
+			}else{
+				//Still processing
+				continue;
+			}
 		}
 	}
 	
-	public int txnWithdraw(int uid, double amount) throws RemoteException{
-		//Returning 0 for success, -1 for server error, -2 for not enough money
+	/**
+	 * Withdraw some money from account uid
+	 * @return balance or negative numbers in case of error
+	 */
+	public double txnWithdraw(int uid, double amount) throws RemoteException{
 		if(!initialized){
 			return -1;
 		}
 		
-		String gid = rmiServer.newTransaction();
+		String gid = rmiServer.txnWithdraw(uid, amount);
 		
-		double balance = rmiServer.read(uid, gid);
-		
-		if(rmiServer.getTxnState(gid)==State.ERROR){
-			//User id not founded
-			rmiServer.abort(gid);
-			return -1;
-		}
-		if(balance < amount){
-			//Not enough money
-			rmiServer.abort(gid);
-			return -2;
-		}
-		
-		rmiServer.write(uid, balance - amount, gid);
-		
-		rmiServer.commit(gid);
-		
-		if(rmiServer.getTxnState(gid) == State.FINISH)
-			return 0;
-		else{
-			return -1;
+		while(true){
+			State s = rmiServer.getTxnState(gid);
+			if( s == State.FINISH)
+				return (Double)rmiServer.getTxnResult(gid);
+			else if(s == State.ERROR){
+				//TODO: do something about the error
+				//The serve could return more information about the error
+				Object err = rmiServer.getTxnResult(gid);
+				return -1;
+			}else{
+				//Still processing
+				continue;
+			}
 		}
 		
 	}
 	
-	public int txnTransfer(int uid1, int uid2, double amount) throws RemoteException{
-		//Transfer amount money from uid1 to uid2
-		//Returning 0 for success, -1, -3 for server error, -2 for not enough money
+	/**
+	 * Transfer some money from account uid1 to uid2
+	 * @return balance of uid1 or negative numbers in case of error
+	 */
+	public double txnTransfer(int uid1, int uid2, double amount) throws RemoteException{
 		if(!initialized){
 			return -1;
 		}
 
-		String gid = rmiServer.newTransaction();
-
-		double balance1 = rmiServer.read(uid1, gid);
-
-		if(rmiServer.getTxnState(gid)==State.ERROR){
-			//User id 1 not founded
-			rmiServer.abort(gid);
-			return -1;
-		}
-		if(balance1 < amount){
-			//Not enough money
-			rmiServer.abort(gid);
-			return -2;
-		}
+		String gid = rmiServer.txnTransfer(uid1, uid2, amount);
 		
-		double balance2 = rmiServer.read(uid2, gid);
-		
-		if(rmiServer.getTxnState(gid)==State.ERROR){
-			//User id 2 not founded
-			rmiServer.abort(gid);
-			return -3;
-		}
-		
-
-		rmiServer.write(uid1, balance1 - amount, gid);
-		
-		rmiServer.write(uid2, balance2 + amount, gid);
-
-		rmiServer.commit(gid);
-
-		if(rmiServer.getTxnState(gid) == State.FINISH)
-			return 0;
-		else{
-			return -1;
+		while(true){
+			State s = rmiServer.getTxnState(gid);
+			if( s == State.FINISH)
+				return (Double)rmiServer.getTxnResult(gid);
+			else if(s == State.ERROR){
+				//TODO: do something about the error
+				//The serve could return more information about the error
+				Object err = rmiServer.getTxnResult(gid);
+				return -1;
+			}else{
+				//Still processing
+				continue;
+			}
 		}
 		
 	}
