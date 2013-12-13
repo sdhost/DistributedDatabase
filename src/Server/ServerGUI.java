@@ -1,22 +1,21 @@
 package Server;
 
 import java.awt.EventQueue;
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
-import java.text.DateFormat;
 import java.util.Date;
-
+import java.util.Map.Entry;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTextArea;
 
 public class ServerGUI {
-
 	private JFrame frame;
 	private Server server;
 	private static JTextArea txtOutput;
-	public static int serverPort = 3232;
 	private JLabel lblServerPort;
 	private JLabel lblServerIP;
 	
@@ -42,10 +41,47 @@ public class ServerGUI {
 	public ServerGUI() {
 		initialize();
 		
-		try{
-			String serverIp = (InetAddress.getLocalHost()).toString();
-			server = new Server(serverIp, serverPort);
+		try {
 			
+			// Parse conf.txt
+			Configuration c = Configuration.fromFile("conf.txt");
+			
+			// Get local ip
+			String serverIp = (InetAddress.getLocalHost().getHostAddress()).toString();
+			
+			// Port should gradually be increased until a free port is gotten
+			int serverPort = 3232;
+			for (int i = serverPort; i < 4000; i++) {
+				try {
+					ServerSocket s = new ServerSocket(i);
+					s.close();
+		        } catch (IOException ex) {
+		            continue;
+		        }
+				
+				serverPort = i;
+				break;
+			}
+
+			// Determine the id of this server
+			Integer serverId = null;
+			for (Entry<Integer, String> e : c.getAllServers().entrySet()) {
+				String ip = e.getValue().split(":")[0];
+				int port = Integer.valueOf(e.getValue().split(":")[1]);
+				
+				if (ip.equals(serverIp) && port == serverPort) {
+					serverId = e.getKey();
+					break;
+				}
+			}
+			
+			if (serverId == null) {
+				log("Server: " + serverIp + ":" + serverPort + " not found in configurationfile");
+				return;
+			}
+			
+			// Init server
+			server = new Server(serverIp, serverPort, serverId);
 			lblServerIP.setText(serverIp);
 			lblServerPort.setText(String.valueOf(serverPort));
         } catch(UnknownHostException uhe){
@@ -54,6 +90,9 @@ public class ServerGUI {
         } catch (RemoteException re) {
 			log(re.toString());
 			return;
+        } catch (IOException ie) {
+        	log(ie.toString());
+			return;
 		}
 		
 		log("Ready...");
@@ -61,7 +100,7 @@ public class ServerGUI {
 	
 	public static void log(String text) {
 		Date now = new Date(System.currentTimeMillis());
-		txtOutput.setText(txtOutput.getText() + "\n" + now.toString() + ":" + text);
+		txtOutput.setText(txtOutput.getText() + "\n" + now.toString() + " : " + text);
 	}
 
 	/**

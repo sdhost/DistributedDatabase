@@ -23,7 +23,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	private Map<String, Object> txnResult;// All the transaction results that the result is not returned
 	
 	
-	protected Server(String ip, int port) throws RemoteException {
+	protected Server(String ip, int port, int serverId) throws RemoteException {
 		super();
 
         try{
@@ -36,9 +36,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         }
         
         serverState = State.ONLINE;
-        uniqueServerId = Math.abs(random.nextInt(Integer.MAX_VALUE) % (int)Math.ceil(((double)Integer.MAX_VALUE / Math.pow(10, shift))) - 9999);
-        //Make sure the uid will be valid
+        uniqueServerId = serverId;
         
+        //Make sure the uid will be valid
         this.txnStates = new HashMap<String,State>();
         this.txnResult = new HashMap<String, Object>();
         
