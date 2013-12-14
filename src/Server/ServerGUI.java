@@ -28,7 +28,6 @@ public class ServerGUI {
 				try {
 					ServerGUI window = new ServerGUI();
 					window.frame.setVisible(true);
-					//window.server.heartMonitor.run();
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -86,13 +85,13 @@ public class ServerGUI {
 			lblServerPort.setText(String.valueOf(serverPort));
         } catch(UnknownHostException uhe){
         	log(uhe.toString());
-        	//return;
+        	return;
         } catch (RemoteException re) {
 			log(re.toString());
-			//return;
+			return;
         } catch (IOException ie) {
         	log(ie.toString());
-			//return;
+			return;
 		}
 		log("Ready...");
 	}

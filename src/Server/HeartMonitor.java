@@ -47,7 +47,7 @@ public class HeartMonitor implements Runnable{
 				if(id != serverId){
 						String serverAddress = e.getValue().split(":")[0];
 						int serverPort = Integer.valueOf(e.getValue().split(":")[1]);
-						System.out.println(serverPort);
+						//System.out.println(serverPort);
 						
 						try {
 										registry = LocateRegistry.getRegistry(serverAddress, serverPort);
@@ -60,15 +60,15 @@ public class HeartMonitor implements Runnable{
 													heartbeatStates.put(id, State.ONLINE);
 												
 									} catch (RemoteException | NotBoundException e1) {
-												System.out.println(e1.getMessage());
+												//System.out.println(e1.getMessage());
 												continue;
 											}
 					}
 				}
 									
-			System.out.println("Listening to hearbeats...");
+			//System.out.println("Listening to hearbeats...");
 				for(Entry<Integer, State> e : heartbeatStates.entrySet()){
-					System.out.println(e.getKey()+": "+e.getValue());
+					//System.out.println(e.getKey()+": "+e.getValue());
 				}						
 			
 			
