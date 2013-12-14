@@ -31,6 +31,10 @@ public interface DataOperationInterface extends Remote {
 	
 	State getTxnState(String gid) throws RemoteException;
 	
+	//Get the creation time of a transaction, the time is represented as the return of System.currentTimeMillis()
+	//If the transaction is not running, this method will return null
+	Long getTxnTime(String gid) throws RemoteException;
+	
 	//After a transaction is submitted, the result may not be returned instantly, we will keep checking the transaction
 	//state until it is failed or finished, and using this function to get the result
 	//The client is responsible to give the result a type and take use of it

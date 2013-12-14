@@ -21,6 +21,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	// Then we can have the unique primary key for all the tuples among all the server
 	private Map<String, State> txnStates;// All the transaction states that the result is not returned
 	private Map<String, Object> txnResult;// All the transaction results that the result is not returned
+	private Map<String, Long> txnTime;//All the transaction creation time that the result is not returned
 	
 	
 	protected Server(String ip, int port, int serverId) throws RemoteException {
@@ -41,6 +42,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         //Make sure the uid will be valid
         this.txnStates = new HashMap<String,State>();
         this.txnResult = new HashMap<String, Object>();
+        this.txnTime = new HashMap<String,Long>();
         
 	}
 
@@ -60,7 +62,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	
 	//**************************************************************
 	//For each transactions, it should have the following operations
-	// 1. Get a unique global transaction id: gid
+	// 1. Get a unique global transaction id: gid, Memorize the transaction creation timestamp
 	// 2.1 Create the entry in txnState with initial state Processing
 	// 2.2 Create the entry in txnResult with initial value of null
 	// 3. Submit the queries one by one to scheduler
@@ -69,8 +71,23 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	// 5.2 Else, send abort request to TransactionManager
 	// 6. Update the txnState and txnResult
 	//**************************************************************
+	
+	
+	//Act as action 1 to 2.2 of the above description
+	//Should be executed before processing the queries
+	private String txnCreation(){
+		Long begin = System.currentTimeMillis();
+		String gid = String.valueOf(begin) + String.valueOf(this.uniqueServerId);
+		this.txnTime.put(gid, begin);
+		this.txnStates.put(gid, State.PROCESSING);
+		this.txnResult.put(gid, null);
+		
+		return gid;
+	}
+	
 	@Override
 	public String txnCreatingAccounts(int balance) throws RemoteException {
+		String gid = this.txnCreation();
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -78,6 +95,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 	@Override
 	public String txnCheckingBalance(int uid) throws RemoteException {
+		String gid = this.txnCreation();
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -85,6 +103,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 	@Override
 	public String txnDeposit(int uid, double amount) throws RemoteException {
+		String gid = this.txnCreation();
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -92,6 +111,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 	@Override
 	public String txnWithdraw(int uid, double amount) throws RemoteException {
+		String gid = this.txnCreation();
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -100,6 +120,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	@Override
 	public String txnTransfer(int uid1, int uid2, double amount)
 			throws RemoteException {
+		String gid = this.txnCreation();
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -109,10 +130,23 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	//To implement get State of transaction and get result of transaction,
 	// the server need to have a map to hold the information of transactions
 	// This information can be discarded after we call getTxnResult function if it is succeeded
+	// Since the get result will return a raw object, it's the client's responsibility to
+	// check which class the result is. 
 	@Override
 	public Object getTxnResult(String gid) throws RemoteException {
-		// TODO Auto-generated method stub
-		return null;
+		if(this.txnResult.containsKey(gid) && this.txnStates.get(gid) != State.PROCESSING){
+			//If the transaction state is not Processing, then we assume all the other works like lock release,
+			// 2PC, logging and redo/undo is done for that transaction.
+			Object result = this.txnResult.get(gid);
+			this.txnResult.remove(gid);
+			this.txnStates.remove(gid);
+			this.txnTime.remove(gid);
+			return result;
+		}else if(this.txnResult.containsKey(gid)){		
+			return new Exception("In Processing");
+		}else{
+			return new Exception("Transaction Not Exist");
+		}
 	}
 
 	
@@ -131,5 +165,14 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	public String send(String message) throws RemoteException {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+
+	@Override
+	public Long getTxnTime(String gid) throws RemoteException {
+		if(this.txnTime.containsKey(gid))
+			return this.txnTime.get(gid);
+		else
+			return null;
 	}
 }
