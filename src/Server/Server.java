@@ -1,5 +1,6 @@
 package Server;
 
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -22,13 +23,15 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	private Map<String, State> txnStates;// All the transaction states that the result is not returned
 	private Map<String, Object> txnResult;// All the transaction results that the result is not returned
 	private Map<String, Long> txnTime;//All the transaction creation time that the result is not returned
+	private Map<Integer, State> heartbeatStates;
+	public HeartMonitor heartMonitor;
 	
 	
-	protected Server(String ip, int port, int serverId) throws RemoteException {
+	protected Server(String ip, int port, int serverId) throws IOException {
 		super();
 
         try{
-        	// create the registry and bind the name and object.
+        	// create the registry, set serverId as the name, bind the server.
         	registry = LocateRegistry.createRegistry( port );
             registry.rebind("rmiServer", this);
         } catch (RemoteException e) {
@@ -43,7 +46,10 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         this.txnStates = new HashMap<String,State>();
         this.txnResult = new HashMap<String, Object>();
         this.txnTime = new HashMap<String,Long>();
-        
+        this.heartbeatStates = new HashMap<Integer, State>();
+        heartMonitor = new HeartMonitor(this.heartbeatStates, serverId);
+        Thread heartThread = new Thread(heartMonitor);
+        heartThread.start();
 	}
 
 
@@ -150,12 +156,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	}
 
 	
-	//Send empty request to one of other servers
-	//Return true if it is OK and false in case of error
 	@Override
-	public Boolean heartBeat() throws RemoteException {
-		// TODO Auto-generated method stub
-		return null;
+	public State heartBeat() throws RemoteException {
+		return this.serverState;
 	}
 
 

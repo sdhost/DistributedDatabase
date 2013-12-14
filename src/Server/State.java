@@ -3,18 +3,19 @@ package Server;
 public enum State {
 	ONLINE(1),
 	OFFLINE(2),
-			//State 1, 2 for Server state
-	TPCSTART(3),
-	TPCPREPARE(4),
-	TPCWAIT(5),
-	//PREABORT(6),
-	//PRECOMMIT(7),
-	TPCABORT(8),
-	TPCCOMMIT(9),
-			//State 3 ~ 9 for 2PC state
-	FINISH(10),
-	ERROR(11),
-	PROCESSING(12);
+	NONEXIST(3),
+			//State 1, 2, 3 for Server state
+	TPCSTART(4),
+	TPCPREPARE(5),
+	TPCWAIT(6),
+	//PREABORT(7),
+	//PRECOMMIT(8),
+	TPCABORT(9),
+	TPCCOMMIT(10),
+			//State 3 ~ 10 for 2PC state
+	FINISH(11),
+	ERROR(12),
+	PROCESSING(13);
 			//State 10 ~ 12 for transaction execution state
 	private int value;
 	

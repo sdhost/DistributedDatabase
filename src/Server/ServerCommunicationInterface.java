@@ -7,7 +7,7 @@ public interface ServerCommunicationInterface extends Remote{
 
 	//Send empty request to one of other servers
 	//Return true if it is OK and false in case of error
-	Boolean heartBeat() throws RemoteException;
+	State heartBeat() throws RemoteException;
 	
 	
 	//Send message to other server with user specification protocol
