@@ -14,7 +14,7 @@ public class Log {
 		
 	}
 	
-	public void newlog(int gid, String tupleID, String tableName, String oldValue, String newValue) {
+	public void newlog(String gid, String tupleID, String tableName, String oldValue, String newValue) {
 		
 		if(oldValue == null)
 			oldValue = "Null";

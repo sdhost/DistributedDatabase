@@ -11,7 +11,7 @@ public class DataManager {
 	/**
 	 * Read from in-memory map
 	 */
-	public String read(String tupleID, String tableName, int gid) throws Exception{
+	public String read(String tupleID, String tableName, String gid) throws Exception {
 		if(!this.tableToTupleIdToValue.containsKey(tableName))
 			throw new Exception(tableName + " not exist!");
 		if(!this.tableToTupleIdToValue.get(tableName).containsKey(tupleID))
@@ -22,7 +22,7 @@ public class DataManager {
 		return this.tableToTupleIdToValue.get(tableName).get(tupleID);
 	}
 	
-	public void write(String tupleID, String tableName, String newValue, int gid) throws Exception{
+	public void write(String tupleID, String tableName, String newValue, String gid) throws Exception{
 		String oldValue = null;
 		
 		if(!this.tableToTupleIdToValue.containsKey(tableName))

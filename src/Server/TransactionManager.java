@@ -1,17 +1,27 @@
 package Server;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class TransactionManager {
 
-	public void handleTransaction() {
+	private Scheduler _scheduler;
+	
+	public TransactionManager() {
+		_scheduler = new Scheduler(); 				
+	}
+	
+	public String txnCreatingAccounts(int balance) {
+		
+		// Create list of operations to apply
+		List<Operation> toApply = new ArrayList<Operation>();		
+		toApply.add(new Operation().read("1"));
+		toApply.add(new Operation().read("2"));
+		toApply.add(new Operation().write("2", "3"));
 
-		// Read transaction
-		
-		// Assign gid (global unique transaction id)
-		
-		// Decompose to read and write operations
-		
-		// Pass to scheduler (which should implement strict 2PL, by interacting with the log manager)
-		
+		// Send to scheduler
+		_scheduler.execute(toApply);
+		return null;
 	}
 	
 	public void abort() {
@@ -29,6 +39,8 @@ public class TransactionManager {
 		
 		
 	}
+
+
 	
 
 

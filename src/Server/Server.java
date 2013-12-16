@@ -16,6 +16,8 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	private int uniqueServerId;
 	private int serialId = 0;//Should be less than 9,999
 	private int shift = 4;
+	private TransactionManager _tm;
+	
 	//For each new account in system, the primary key uid for it will be generated as
 	// uid = uniqueServerId * 10^shift + serialId
 	// Each time a new uid is generated, the serialId will be increased by one
@@ -24,6 +26,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	private Map<String, Object> txnResult;// All the transaction results that the result is not returned
 	private Map<String, Long> txnTime;//All the transaction creation time that the result is not returned
 	private Map<Integer, State> heartbeatStates;
+	public volatile int a = 999;
 	public HeartMonitor heartMonitor;
 	
 	
@@ -41,6 +44,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         
         serverState = State.ONLINE;
         uniqueServerId = serverId;
+        
+        
+        _tm = new TransactionManager();
         
         //Make sure the uid will be valid
         this.txnStates = new HashMap<String,State>();
@@ -92,8 +98,18 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	}
 	
 	@Override
-	public String txnCreatingAccounts(int balance) throws RemoteException {
+	public String txnCreatingAccounts(int balance) throws RemoteException {		
 		String gid = this.txnCreation();
+		try {
+						
+			ServerGUI.log("Waiting to create account :: " + a);
+			a = balance;
+			Thread.sleep(100000);
+			
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		// TODO Auto-generated method stub
 		return null;
 	}
