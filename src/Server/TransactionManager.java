@@ -15,9 +15,9 @@ public class TransactionManager {
 		
 		// Create list of operations to apply
 		List<Operation> toApply = new ArrayList<Operation>();		
-		toApply.add(new Operation().read("1"));
-		toApply.add(new Operation().read("2"));
-		toApply.add(new Operation().write("2", "3"));
+		toApply.add(new Operation().read("1", "1"));
+		toApply.add(new Operation().read("1", "2"));
+		toApply.add(new Operation().write("1", "2", "3"));
 
 		// Send to scheduler
 		_scheduler.execute(toApply);

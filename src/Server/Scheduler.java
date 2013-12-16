@@ -1,14 +1,10 @@
 package Server;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
  * Receives read and write operations, which are ordered into a serializable plan,
- * using 2PL, and communication with the Lock Manager and Data Manager.
- *
+ * using a PrecedenceGraph and 2PL.
  */
 public class Scheduler {
 	private LockManager _lockmanager;
@@ -69,6 +65,9 @@ public class Scheduler {
 	 * Called to execute operations in serializable fashion
 	 */
 	public void execute(List<Operation> operations) {
+		
+		
+		
 		
 	}
 	

@@ -98,8 +98,12 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	}
 	
 	@Override
-	public String txnCreatingAccounts(int balance) throws RemoteException {		
-		String gid = this.txnCreation();
+	public String txnCreatingAccounts(int balance) throws RemoteException {
+		
+		_tm.txnCreatingAccounts(199);
+		
+		
+		/*String gid = this.txnCreation();
 		try {
 						
 			ServerGUI.log("Waiting to create account :: " + a);
@@ -111,6 +115,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			e.printStackTrace();
 		}
 		// TODO Auto-generated method stub
+		 */
 		return null;
 	}
 
