@@ -19,6 +19,7 @@ public class LockManager {
 	private Map<String,Map<String,String>> message; // A error message holder, Map<TxnId,Map<TxnId, ErrorMessage>>
 													// ErrorMessage will be split by tab("\t") if contains messages more than one column
 	
+	
 	// Maintain for each bank account
 	// - The type of lock that is currently held
 	// - A list of transactions holding the lock
@@ -107,6 +108,8 @@ public class LockManager {
 		return this.message.get(gid);
 	}
 	
+	
+	
 	//Release all the locks hold by a transaction, may be called in transaction commit or abort
 	public boolean release(String gid){
 		if(!this.txnTime.containsKey(gid)){//This transaction doesn't have any locks request in lockManager
@@ -153,7 +156,7 @@ public class LockManager {
 								if(wait){//Later request will has a later timestamp, then none of the rest request can be granted
 									break;
 								}else if(abortOther){
-									//TODO: Decide how to make the abort chain works well here
+									//This situation will not occur if the schedule is serializable
 								}else{//All share locks
 									processed.add(this.waitingQueue.get(entryTuple.getKey()).indexOf(req));
 									entryTuple.getValue().put(txnId, type);
@@ -174,6 +177,19 @@ public class LockManager {
 			
 		}
 		
+	}
+	
+	
+	//Check whether a tuple lock request has been granted
+	//This function only check the granted list, will not check whether this request is in waiting queue
+	public boolean isLocked(String gid, String tupleId){
+		if(this.tupleLocks.get(tupleId).containsKey(gid))
+			synchronized(this){
+				this.notify();
+				return true;
+			}
+		else
+			return false;
 	}
 	
 }
