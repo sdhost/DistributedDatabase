@@ -57,7 +57,7 @@ public class Client{
 	 * Check the balance for account uid
 	 * @return balance or -1 in case of problems
 	 */
-	public double txnCheckingBalance(int uid) throws RemoteException{
+	public double txnCheckingBalance(String uid) throws RemoteException{
 		if(!initialized){
 			return -1;
 		}
@@ -86,7 +86,7 @@ public class Client{
 	 * Deposit some money to account uid
 	 * @return balance or -1 in case of problems
 	 */
-	public double txnDeposit(int uid, double amount) throws RemoteException{
+	public double txnDeposit(String uid, int amount) throws RemoteException{
 		if(!initialized){
 			return -1;
 		}
@@ -113,7 +113,7 @@ public class Client{
 	 * Withdraw some money from account uid
 	 * @return balance or negative numbers in case of error
 	 */
-	public double txnWithdraw(int uid, double amount) throws RemoteException{
+	public double txnWithdraw(String uid, int amount) throws RemoteException{
 		if(!initialized){
 			return -1;
 		}
@@ -141,7 +141,7 @@ public class Client{
 	 * Transfer some money from account uid1 to uid2
 	 * @return balance of uid1 or negative numbers in case of error
 	 */
-	public double txnTransfer(int uid1, int uid2, double amount) throws RemoteException{
+	public double txnTransfer(String uid1, String uid2, int amount) throws RemoteException{
 		if(!initialized){
 			return -1;
 		}

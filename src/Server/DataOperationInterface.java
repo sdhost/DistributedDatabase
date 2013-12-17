@@ -13,19 +13,19 @@ public interface DataOperationInterface extends Remote {
 	
 	//Check balance for a given account primary key uid
 	//Return the transaction gid for further operation
-	String txnCheckingBalance(int uid) throws RemoteException;
+	String txnCheckingBalance(String uid) throws RemoteException;
 	
 	//Deposit amount money to account uid
 	//Return the transaction gid for further operation
-	String txnDeposit(int uid, double amount) throws RemoteException;
+	String txnDeposit(String uid, int amount) throws RemoteException;
 	
 	//Withdraw amount money from account uid
 	//Return the transaction gid for further operation
-	String txnWithdraw(int uid, double amount) throws RemoteException;
+	String txnWithdraw(String uid, int amount) throws RemoteException;
 	
 	//Transfer amount money from uid1 to uid2
 	//Return the transaction gid for further operation
-	String txnTransfer(int uid1, int uid2, double amount) throws RemoteException;
+	String txnTransfer(String uid1, String uid2, int amount) throws RemoteException;
 	
 	
 	

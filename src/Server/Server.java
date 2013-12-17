@@ -97,59 +97,73 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		return gid;
 	}
 	
+	private String nextUid(){
+		String uid = String.valueOf(uniqueServerId * 10^shift + serialId);
+		serialId++;
+		return uid;
+	}
+	
 	@Override
 	public String txnCreatingAccounts(int balance) throws RemoteException {
 		
-		_tm.txnCreatingAccounts(199);
+		String gid = this.txnCreation();
+		String uid = this.nextUid();
+		_tm.txnCreatingAccounts(balance, gid, uid, this.txnTime.get(gid));
+		//May add some error processing code here
+		this.txnStates.put(gid, State.FINISH);
+		this.txnResult.put(gid, uid);
 		
+		return gid;
+	}
+
+
+	@Override
+	public String txnCheckingBalance(String uid) throws RemoteException {
+		String gid = this.txnCreation();
+		String balance = _tm.txnCheckingBalance(gid, uid, this.txnTime.get(gid));
 		
-		/*String gid = this.txnCreation();
-		try {
-						
-			ServerGUI.log("Waiting to create account :: " + a);
-			a = balance;
-			Thread.sleep(100000);
-			
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		// TODO Auto-generated method stub
-		 */
-		return null;
+		this.txnStates.put(gid, State.FINISH);
+		this.txnResult.put(gid, Integer.valueOf(balance));
+		
+		return gid;
 	}
 
 
 	@Override
-	public String txnCheckingBalance(int uid) throws RemoteException {
+	public String txnDeposit(String uid, int amount) throws RemoteException {
 		String gid = this.txnCreation();
-		// TODO Auto-generated method stub
-		return null;
+		String balance = _tm.txnDeposit(gid,uid,amount, this.txnTime.get(gid));
+
+		this.txnStates.put(gid, State.FINISH);
+		this.txnResult.put(gid, Integer.valueOf(balance));
+		
+		return gid;
 	}
 
 
 	@Override
-	public String txnDeposit(int uid, double amount) throws RemoteException {
+	public String txnWithdraw(String uid, int amount) throws RemoteException {
 		String gid = this.txnCreation();
-		// TODO Auto-generated method stub
-		return null;
+		String balance = _tm.txnWithdraw(gid,uid,amount, this.txnTime.get(gid));
+
+		this.txnStates.put(gid, State.FINISH);
+		this.txnResult.put(gid, Integer.valueOf(balance));
+		
+		return gid;
 	}
 
 
 	@Override
-	public String txnWithdraw(int uid, double amount) throws RemoteException {
-		String gid = this.txnCreation();
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-
-	@Override
-	public String txnTransfer(int uid1, int uid2, double amount)
+	public String txnTransfer(String uid1, String uid2, int amount)
 			throws RemoteException {
 		String gid = this.txnCreation();
-		// TODO Auto-generated method stub
-		return null;
+		String balance = _tm.txnTransfer(gid,uid1,uid2,amount, this.txnTime.get(gid));
+		
+
+		this.txnStates.put(gid, State.FINISH);
+		this.txnResult.put(gid, Integer.valueOf(balance));
+		
+		return gid;
 	}
 
 	

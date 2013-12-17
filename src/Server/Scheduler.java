@@ -1,5 +1,6 @@
 package Server;
 
+import java.util.LinkedList;
 import java.util.List;
 import Server.Operation.type;
 
@@ -19,10 +20,18 @@ public class Scheduler {
 	/**
 	 * Called to execute transaction
 	 */
-	public void execute(List<Operation> tx, String gid) {
+	public List<ResultSet> execute(List<Operation> tx, String gid, Long timestamp) {
+		
+		List<ResultSet> rs = new LinkedList<ResultSet>();
+		
+		_lockmanager.prepareLocking(gid, timestamp);
+		
 		for (Operation o : tx) {
-			if (o.getType() == type.READ)
-				read(o.getTupleID(), gid);
+			if (o.getType() == type.READ){
+				ResultSet result = new ResultSet(read(o.getTupleID(), gid));
+				rs.add(result);
+				
+			}
 			if (o.getType() == type.WRITE)
 				write(o.getTupleID(), o.getNewValue(), gid);
 		}
@@ -35,6 +44,8 @@ public class Scheduler {
 				Thread.sleep(500);	
 			}  catch (Exception ex) {}
 		}
+		
+		return rs;
 	}
 	
 	/**
