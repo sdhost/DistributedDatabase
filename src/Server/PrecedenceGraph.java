@@ -7,6 +7,7 @@ import Server.Operation.type;
 
 /**
  * Class implements the logic of a Precedence Graph
+ * 	Not finished, as seems it is not needed!
  */
 public class PrecedenceGraph {
 	private List<List<Operation>> _unfinishedTransactions;

@@ -20,7 +20,7 @@ public class TransactionManager {
 		toApply.add(new Operation().write("1", "2", "3"));
 
 		// Send to scheduler
-		_scheduler.execute(toApply);
+		_scheduler.execute(toApply, "1");
 		return null;
 	}
 	
