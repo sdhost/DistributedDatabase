@@ -68,6 +68,22 @@ public class LockManager {
 				}
 					
 			}
+			if(!wait)//Check the waiting list, if there exist some transaction that has a earlier timestamp,
+				//this transaction should wait to avoid aborted by that transaction
+				for(Entry<String, LinkedList<String>> e:this.waitingQueue.entrySet()){
+					for(String req:e.getValue()){
+						String[] elem = req.split("\t");
+						Boolean wtype = Boolean.valueOf(elem[1]);
+						String wgid = elem[0];
+						if(wtype || type){
+							if(this.txnTime.get(wgid) < this.txnTime.get(gid)){
+								abortOther = false;
+								wait = true;
+								break;
+							}
+						}
+					}
+				}
 			if(wait){//This transaction should wait
 				if(this.waitingQueue.containsKey(tupleId)){
 					this.waitingQueue.get(tupleId).add(gid + "\t" + String.valueOf(type));
