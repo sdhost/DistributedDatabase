@@ -7,6 +7,7 @@ import java.rmi.registry.Registry;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Server extends java.rmi.server.UnicastRemoteObject implements DataOperationInterface, ServerCommunicationInterface{
 	private Registry registry; //RMI registry for lookup the remote objects
@@ -22,9 +23,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	// uid = uniqueServerId * 10^shift + serialId
 	// Each time a new uid is generated, the serialId will be increased by one
 	// Then we can have the unique primary key for all the tuples among all the server
-	private Map<String, State> txnStates;// All the transaction states that the result is not returned
-	private Map<String, Object> txnResult;// All the transaction results that the result is not returned
-	private Map<String, Long> txnTime;//All the transaction creation time that the result is not returned
+	private volatile ConcurrentHashMap<String, State> txnStates;// All the transaction states that the result is not returned
+	private volatile ConcurrentHashMap<String, Object> txnResult;// All the transaction results that the result is not returned
+	private volatile ConcurrentHashMap<String, Long> txnTime;//All the transaction creation time that the result is not returned
 	private Map<Integer, State> heartbeatStates;
 	public volatile int a = 999;
 	public HeartMonitor heartMonitor;
@@ -49,9 +50,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         _tm = new TransactionManager();
         
         //Make sure the uid will be valid
-        this.txnStates = new HashMap<String,State>();
-        this.txnResult = new HashMap<String, Object>();
-        this.txnTime = new HashMap<String,Long>();
+        this.txnStates = new ConcurrentHashMap<String,State>();
+        this.txnResult = new ConcurrentHashMap<String, Object>();
+        this.txnTime = new ConcurrentHashMap<String,Long>();
         this.heartbeatStates = new HashMap<Integer, State>();
         heartMonitor = new HeartMonitor(this.heartbeatStates, serverId);
         Thread heartThread = new Thread(heartMonitor);

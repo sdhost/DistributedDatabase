@@ -5,18 +5,19 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LockManager {
 	
-	private Map<String, LinkedHashMap<String, Boolean>> tupleLocks; //Map<TupleID, Map<TxnID,LockType>>
+	private volatile ConcurrentHashMap<String, LinkedHashMap<String, Boolean>> tupleLocks; //Map<TupleID, Map<TxnID,LockType>>
 													 // There are two types of lock, true for Exclusive lock
 													 // and false for share lock
-	private Map<String, Long> txnTime;//Map<TxnId,Timestamp>, for all the transactions that hold the lock
+	private volatile ConcurrentHashMap<String, Long> txnTime;//Map<TxnId,Timestamp>, for all the transactions that hold the lock
 	
-	private HashMap<String, LinkedList<String>> waitingQueue;// A queue for lock requests, LinkedHashMap<TupleId, LinkedList<TxnID+LockType>>
+	private volatile ConcurrentHashMap<String, LinkedList<String>> waitingQueue;// A queue for lock requests, LinkedHashMap<TupleId, LinkedList<TxnID+LockType>>
 															 // TODO: Maybe need to have a priority queue? Refined later.
 											
-	private Map<String,Map<String,String>> message; // A error message holder, Map<TxnId,Map<TxnId, ErrorMessage>>
+	private volatile ConcurrentHashMap<String,Map<String,String>> message; // A error message holder, Map<TxnId,Map<TxnId, ErrorMessage>>
 													// ErrorMessage will be split by tab("\t") if contains messages more than one column
 	
 	
@@ -25,10 +26,10 @@ public class LockManager {
 	// - A list of transactions holding the lock
 	// - a queue of lock requests
 	public LockManager(){
-		this.tupleLocks = new HashMap<String, LinkedHashMap<String, Boolean>>();
-		this.txnTime = new HashMap<String, Long>();
-		this.waitingQueue = new HashMap<String, LinkedList<String>>();
-		this.message = new HashMap<String, Map<String,String>>();
+		this.tupleLocks = new ConcurrentHashMap<String, LinkedHashMap<String, Boolean>>();
+		this.txnTime = new ConcurrentHashMap<String, Long>();
+		this.waitingQueue = new ConcurrentHashMap<String, LinkedList<String>>();
+		this.message = new ConcurrentHashMap<String, Map<String,String>>();
 	}
 	
 	// When a lock request arrives, check if any other transaction is

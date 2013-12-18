@@ -2,11 +2,12 @@ package Server;
 
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DataManager {
 	
-	private Log log;
-	private Map<String, Map<String, String>> tableToTupleIdToValue; 	//In memory log
+	private volatile Log log;
+	private volatile ConcurrentHashMap<String, Map<String, String>> tableToTupleIdToValue; 	//In memory log
 	
 	/**
 	 * Read from in-memory map
