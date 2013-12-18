@@ -64,7 +64,7 @@ public class Scheduler {
 		
 		// Shared lock granted
 		try {
-			return _datamanager.read(tupleID, "tableNotUsed", gid);	
+			return _datamanager.read(tupleID, gid);	
 		} catch (Exception ex) {
 			ServerGUI.log("Error reading from DataManager: " + ex.toString());
 			return null;
@@ -87,7 +87,7 @@ public class Scheduler {
 		
 		// Exclusive lock granted
 		try {
-			_datamanager.write(tupleID, "tableNotUsed", newValue, gid);
+			_datamanager.write(tupleID, newValue, gid);
 		} catch (Exception ex) {
 			ServerGUI.log("Error writing to DataManager: " + ex.toString());
 		}

@@ -14,7 +14,7 @@ public class Log {
 		
 	}
 	
-	public void newlog(String gid, String tupleID, String tableName, String oldValue, String newValue) {
+	public void newlog(String gid, String tupleID, String oldValue, String newValue) {
 		
 		if(oldValue == null)
 			oldValue = "Null";
@@ -23,7 +23,6 @@ public class Log {
 		
 		String logline = String.valueOf(gid) + "\t" +
 						 tupleID + "\t" +
-						 tableName + "\t" +
 						 oldValue + "\t" +
 						 newValue + "\t";
 		this.rawLog.put(serialID, logline);

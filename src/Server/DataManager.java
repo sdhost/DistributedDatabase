@@ -7,34 +7,32 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DataManager {
 	
 	private volatile Log log;
-	private volatile ConcurrentHashMap<String, Map<String, String>> tableToTupleIdToValue; 	//In memory log
+	
+	private volatile ConcurrentHashMap<String, String> TupleIdToValue; 	//In memory Database, Assume Only one table, a global unique key and a value column
+	
 	
 	/**
 	 * Read from in-memory map
+	 * The scheduler should make sure lock has been granted before calling read/write of data manager
 	 */
-	public String read(String tupleID, String tableName, String gid) throws Exception {
-		if(!this.tableToTupleIdToValue.containsKey(tableName))
-			throw new Exception(tableName + " not exist!");
-		if(!this.tableToTupleIdToValue.get(tableName).containsKey(tupleID))
-			throw new Exception(tupleID + " not exist in table " + tableName);
+	public String read(String tupleID, String gid) throws Exception {
+		if(!this.TupleIdToValue.containsKey(tupleID))
+			throw new Exception(tupleID + " not exist in table ");
 		
-		log.newlog(gid, tupleID, tableName, null, null);
+		log.newlog(gid, tupleID, null, null);
 		
-		return this.tableToTupleIdToValue.get(tableName).get(tupleID);
+		return this.TupleIdToValue.get(tupleID);
 	}
 	
-	public void write(String tupleID, String tableName, String newValue, String gid) throws Exception{
+	public void write(String tupleID, String newValue, String gid) throws Exception{
 		String oldValue = null;
 		
-		if(!this.tableToTupleIdToValue.containsKey(tableName))
-			throw new Exception(tableName + " not exist!");
+		if(this.TupleIdToValue.containsKey(tupleID))
+			oldValue = this.TupleIdToValue.get(tupleID);
 		
-		if(this.tableToTupleIdToValue.get(tableName).containsKey(tupleID))
-			oldValue = this.tableToTupleIdToValue.get(tableName).get(tupleID);
+		log.newlog(gid, tupleID, oldValue, newValue);
 		
-		log.newlog(gid, tupleID, tableName, oldValue, newValue);
-		
-		this.tableToTupleIdToValue.get(tableName).put(tupleID, newValue);
+		this.TupleIdToValue.put(tupleID, newValue);
 		
 	}
 	
