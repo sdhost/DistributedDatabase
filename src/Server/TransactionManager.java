@@ -1,14 +1,28 @@
 package Server;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class TransactionManager {
 
 	private Scheduler _scheduler;
+	private CommitCoordinator _2PC;
 	
-	public TransactionManager() {
-		_scheduler = new Scheduler(); 				
+	//TODO: Kasper: For each finished transaction, Scheduler should create a ProcessedTransaction object for it and put that into this queue
+	public ConcurrentLinkedQueue<ProcessedTransaction> _processedTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
+	
+	//TODO: Kaiji: if a transaction that involves multiple servers is initiated in the local TM,
+	//the local TM will put the server IDs of other involved Servers into _initiatedTxn(except for local server id), where the key is gid.
+	public HashMap<String, ArrayList<Integer>> _initiatedTxn = new HashMap<String, ArrayList<Integer>>();
+	
+	public TransactionManager() throws IOException {
+		_scheduler = new Scheduler();
+		_2PC = new CommitCoordinator(this);
+		Thread _2PCThread = new Thread(_2PC);
+		_2PCThread.start();
 	}
 	
 	public String txnCreatingAccounts(int balance, String gid, String uid, Long timestamp) {
@@ -23,19 +37,15 @@ public class TransactionManager {
 		return null;
 	}
 	
-	public void abort() {
+	public void abort(String gid) {
 		
-		// Call scheduler to undo the operations of the transaction
+		// TODO:abort transaction gid
 		
 	}
 	
-	public void commit() {
+	public void commit(String gid) {
 		
-		// Forward commit request to 2PC manager, which becomes coordinator in 2PC protocol.
-		
-		// Coordinator contacts relevant remote servers 2PC managers, to complete a 2PC.
-		
-		
+		//TODO:commit transaction gid
 		
 	}
 
@@ -48,7 +58,7 @@ public class TransactionManager {
 		List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
 		ResultSet result = rs.iterator().next();
 		
-		this.commit();
+		this.commit(gid);
 		
 		return (String)result.getVal();
 	}
@@ -69,7 +79,7 @@ public class TransactionManager {
 		
 		_scheduler.execute(toApply, gid, timestamp);
 		
-		this.commit();
+		this.commit(gid);
 		
 		//We can read it again if necessary
 		return String.valueOf(balance + amount);
@@ -98,7 +108,7 @@ public class TransactionManager {
 		
 		_scheduler.execute(toApply, gid, timestamp);
 				
-		this.commit();
+		this.commit(gid);
 		//We can read it again if necessary
 		return String.valueOf(balance - amount);
 	}

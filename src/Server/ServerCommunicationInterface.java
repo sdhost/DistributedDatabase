@@ -10,6 +10,12 @@ public interface ServerCommunicationInterface extends Remote{
 	State heartBeat() throws RemoteException;
 	
 	
+	//reply vote request from other servers
+	State replyVote(String gid) throws RemoteException;
+	
+	//proceed the global vote decision
+	String proceedVoteDecision(String gid, State decision) throws RemoteException;
+	
 	//Send message to other server with user specification protocol
 	//Return some message for user
 	String send(String message) throws RemoteException;

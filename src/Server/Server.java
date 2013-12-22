@@ -5,6 +5,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -196,8 +197,72 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	public State heartBeat() throws RemoteException {
 		return this.serverState;
 	}
+	
+	@Override
+	public State replyVote(String gid){
+		ProcessedTransaction targetTxn = null;
+		Iterator<ProcessedTransaction> it = _tm._processedTxn.iterator();
+		while(it.hasNext()){
+			ProcessedTransaction txn = it.next();
+			if(txn.getGid() == gid)
+				targetTxn = txn;
+		}
+		if(targetTxn == null){
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		it = _tm._processedTxn.iterator();
+		while(it.hasNext()){
+			ProcessedTransaction txn = it.next();
+			if(txn.getGid() == gid)
+				targetTxn = txn;
+		}
+		if(targetTxn == null){
 
-
+			//TODO: write abort into log
+			//TODO:abort this transaction
+			return State.PREABORT;
+		}
+		else{
+			if(targetTxn.getState() == State.PREABORT){
+				//TODO: write abort into log
+				//TODO:abort this transaction
+			}
+			if(targetTxn.getState() == State.PRECOMMIT){
+				//TODO: write ready into log
+			}
+			return targetTxn.getState();
+		}
+		
+	}
+	
+	//proceed the global vote decision
+	@Override
+	public String proceedVoteDecision(String gid, State decision){
+		if(decision == State.TPCCOMMIT){
+			//TODO: write commit into log
+			_tm.commit(gid);
+		}else if(decision == State.TPCABORT){
+			//TODO: write abort into log
+			_tm.abort(gid);
+		}
+		ProcessedTransaction targetTxn = null;
+		Iterator<ProcessedTransaction> it = _tm._processedTxn.iterator();
+		while(it.hasNext()){
+			ProcessedTransaction txn = it.next();
+			if(txn.getGid() == gid)
+				targetTxn = txn;
+		}
+		if(targetTxn != null)
+			_tm._processedTxn.remove(targetTxn);
+		return gid;
+	}
+	
+	
 	//Send message to other server with user specification protocol
 	//Return some message for user
 	@Override
