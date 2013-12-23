@@ -28,6 +28,8 @@ public interface ServerCommunicationInterface extends Remote{
 	
 	//Check whether tuple is stored in this server
 	boolean isExist(String tupleId) throws RemoteException;
+	
+	int getServerID() throws RemoteException;
 
 
 	

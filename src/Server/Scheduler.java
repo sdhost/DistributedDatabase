@@ -14,15 +14,15 @@ public class Scheduler {
 	private DataManager _datamanager;
 	private List<Scheduler> neighbour = null;
 	
-	public Scheduler() {
-		_lockmanager = new LockManager();
+	public Scheduler(TransactionManager tm) {
+		_lockmanager = new LockManager(tm);
 		_datamanager = new DataManager();
 	}
 	
 	/**
 	 * Called to execute transaction
 	 */
-	public List<ResultSet> execute(List<Operation> tx, String gid, Long timestamp) {
+	public List<ResultSet> execute(List<Operation> tx, String gid, Long timestamp){
 		
 		List<ResultSet> rs = new LinkedList<ResultSet>();
 		

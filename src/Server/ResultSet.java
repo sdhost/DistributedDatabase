@@ -5,8 +5,12 @@ public class ResultSet {
 	Object val;
 	
 	public ResultSet(Object o){
+		if(o == null)
+			this.type = null;
+		else
+			this.type = o.getClass().getName();
 		this.val = o;
-		this.type = o.getClass().getName();
+		
 	}
 	
 	public String getType() {
@@ -17,6 +21,10 @@ public class ResultSet {
 		return val;
 	}
 	
-	
+	public State isSuccess(){
+		if( !(this.type == null))
+			return State.PRECOMMIT;
+		else return State.PREABORT;
+	}
 	
 }

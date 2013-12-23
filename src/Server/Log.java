@@ -2,13 +2,14 @@ package Server;
 
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Log {
 
-	private int serialID = 0;
+	private volatile int serialID = 0;
 	private int lastCommit = -1;
 	
-	private Map<Integer, String> rawLog; //Map<serialID, LogContent>
+	private volatile ConcurrentHashMap<Integer, String> rawLog; //Map<serialID, LogContent>
 	
 	public Log(){
 		

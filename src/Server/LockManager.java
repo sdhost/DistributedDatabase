@@ -19,13 +19,14 @@ public class LockManager {
 											
 	private volatile ConcurrentHashMap<String,Map<String,String>> message; // A error message holder, Map<TxnId,Map<TxnId, ErrorMessage>>
 													// ErrorMessage will be split by tab("\t") if contains messages more than one column
-	
+	private TransactionManager _tm = null;
 	
 	// Maintain for each bank account
 	// - The type of lock that is currently held
 	// - A list of transactions holding the lock
 	// - a queue of lock requests
-	public LockManager(){
+	public LockManager(TransactionManager tm){
+		this._tm = tm;
 		this.tupleLocks = new ConcurrentHashMap<String, LinkedHashMap<String, Boolean>>();
 		this.txnTime = new ConcurrentHashMap<String, Long>();
 		this.waitingQueue = new ConcurrentHashMap<String, LinkedList<String>>();
@@ -101,8 +102,14 @@ public class LockManager {
 				return true;
 			}
 			else if(abortOther){//All the other transactions hold the lock need to abort
-				Map<String,String> newError = new HashMap<String,String>();
+				Map<String,String> newError;
+				if(this.message.contains(gid))
+					newError = this.message.get(gid);
+				else
+					newError = new HashMap<String,String>();
+				
 				for(String txn:abortTxn){
+					_tm._processedTxn.add(new ProcessedTransaction(txn,State.PREABORT));
 					oldLock.remove(txn);
 					String mess = "O\tNeed to Abort";
 					newError.put(txn, mess);

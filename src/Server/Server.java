@@ -317,8 +317,12 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 	@Override
 	public boolean isExist(String tupleId) throws RemoteException {
-		// TODO Auto-generated method stub
-		return false;
+		return this._tm.isExist(tupleId);
+	}
+
+	@Override
+	public int getServerID() throws RemoteException {
+		return this.uniqueServerId;
 	}
 
 }

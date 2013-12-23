@@ -16,15 +16,14 @@ public class TransactionManager implements Serializable{
 	private List<ServerCommunicationInterface> neighbour_server;
 	
 	
-	//TODO: Kasper: For each finished transaction, Scheduler should create a ProcessedTransaction object for it and put that into this queue
 	public ConcurrentLinkedQueue<ProcessedTransaction> _processedTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
 	
 	//TODO: Kaiji: if a transaction that involves multiple servers is initiated in the local TM,
 	//the local TM will put the server IDs of other involved Servers into _initiatedTxn(except for local server id), where the key is gid.
-	public HashMap<String, ArrayList<Integer>> _initiatedTxn = new HashMap<String, ArrayList<Integer>>();
+	public volatile HashMap<String, ArrayList<Integer>> _initiatedTxn = new HashMap<String, ArrayList<Integer>>();
 	
 	public TransactionManager() throws IOException {
-		_scheduler = new Scheduler();
+		_scheduler = new Scheduler(this);
 		_2PC = new CommitCoordinator(this);
 		Thread _2PCThread = new Thread(_2PC);
 		_2PCThread.start();
@@ -48,9 +47,9 @@ public class TransactionManager implements Serializable{
 		
 	}
 	
-	public void commit(String gid) {
+	public void finish(String gid, ResultSet result) {
 		
-		//TODO:commit transaction gid
+		ProcessedTransaction pt = new ProcessedTransaction(gid, result.isSuccess());
 		
 	}
 
@@ -63,7 +62,7 @@ public class TransactionManager implements Serializable{
 		List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
 		ResultSet result = rs.iterator().next();
 		
-		this.commit(gid);
+		this.finish(gid, result);
 		
 		return (String)result.getVal();
 	}
@@ -82,9 +81,10 @@ public class TransactionManager implements Serializable{
 		toApply.clear();
 		toApply.add(new Operation().write(gid, uid, String.valueOf(balance + amount)));
 		
-		_scheduler.execute(toApply, gid, timestamp);
+		rs = _scheduler.execute(toApply, gid, timestamp);
+		result = rs.iterator().next();
 		
-		this.commit(gid);
+		this.finish(gid, result);
 		
 		//We can read it again if necessary
 		return String.valueOf(balance + amount);
@@ -111,9 +111,10 @@ public class TransactionManager implements Serializable{
 		toApply.clear();
 		toApply.add(new Operation().write(gid, uid, String.valueOf(balance - amount)));
 		
-		_scheduler.execute(toApply, gid, timestamp);
+		rs = _scheduler.execute(toApply, gid, timestamp);
+		result = rs.iterator().next();
 				
-		this.commit(gid);
+		this.finish(gid, result);
 		//We can read it again if necessary
 		return String.valueOf(balance - amount);
 	}
@@ -144,18 +145,22 @@ public class TransactionManager implements Serializable{
 		
 		List<Operation> toApply = new ArrayList<Operation>();
 		toApply.add(new Operation().read(gid, uid1));
+		ResultSet result;
 		if(svr2 == null){
 			toApply.add(new Operation().read(gid, uid2));
 			
 			List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
-			ResultSet result = rs.get(0);
+			result = rs.get(0);
 			balance1 = Integer.valueOf(((String)result.getVal()));
 			
 			result = rs.get(1);
 			balance2 = Integer.valueOf(((String)result.getVal()));
 		}else{
+			ArrayList<Integer> list = new ArrayList<Integer>();
+			list.add(svr2.getServerID());
+			this._initiatedTxn.put(gid, list);
 			List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
-			ResultSet result = rs.get(0);
+			result = rs.get(0);
 			balance1 = Integer.valueOf(((String)result.getVal()));
 			
 			toApply.clear();
@@ -196,6 +201,8 @@ public class TransactionManager implements Serializable{
 		}
 		
 		
+		this.finish(gid, result);
+		
 		return String.valueOf(balance1);
 	}
 
@@ -204,11 +211,17 @@ public class TransactionManager implements Serializable{
 	}
 	
 	public List<ResultSet> executeRemote(List<Operation> ops, String gid, long timestamp){
+		
 		return this._scheduler.execute(ops, gid, timestamp);
 	}
 
 	public boolean isExist(String tupleId){
 		return this._scheduler.isInServer(tupleId);
+	}
+
+	public void commit(String gid) {
+		// TODO Auto-generated method stub
+		
 	}
 	
 
