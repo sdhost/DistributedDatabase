@@ -14,7 +14,7 @@ import javax.swing.JTextArea;
 
 public class ServerGUI {
 	private JFrame frame;
-	private Server server;
+	private Server server;//TODO: Require a server list for all the available servers, call server.
 	private static JTextArea txtOutput;
 	private JLabel lblServerPort;
 	private JLabel lblServerIP;

@@ -140,6 +140,16 @@ public class TransactionManager {
 		return String.valueOf(balance1);
 	}
 
+	public void initialNeighbour(List<TransactionManager> neighbour_tm) {
+		List<Scheduler> neighbour_scheduler = new ArrayList<Scheduler>();
+		for(TransactionManager tm:neighbour_tm){
+			neighbour_scheduler.add(tm._scheduler);
+		}
+		
+		this._scheduler.initialNeighbour(neighbour_scheduler);
+		
+	}
+
 
 	
 

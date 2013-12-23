@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,6 +21,8 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	private int serialId = 0;//Should be less than 9,999
 	private int shift = 4;
 	private TransactionManager _tm;
+	private List<Server> neighbour_server;//TODO: Should be initialized in ServerGUI initialization
+	
 	
 	//For each new account in system, the primary key uid for it will be generated as
 	// uid = uniqueServerId * 10^shift + serialId
@@ -47,6 +51,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         serverState = State.ONLINE;
         uniqueServerId = serverId;
         
+        neighbour_server = new ArrayList<Server>();
         
         _tm = new TransactionManager();
         
@@ -58,6 +63,18 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         heartMonitor = new HeartMonitor(this.heartbeatStates, serverId);
         Thread heartThread = new Thread(heartMonitor);
         heartThread.start();
+	}
+	
+	public void initialNeighbour(List<Server> neighbours){
+		//TODO: Initial all the other servers here, using reference of create a new object, let the TM able to call 
+		//		functions in other server
+		
+		
+		//After initialized, pass the remote scheduler down to the local scheduler
+		List<TransactionManager> neighbour_tm = new ArrayList<TransactionManager>();
+		for(Server s:this.neighbour_server)
+			neighbour_tm.add(s._tm);
+		this._tm.initialNeighbour(neighbour_tm);
 	}
 
 
@@ -267,7 +284,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	//Return some message for user
 	@Override
 	public String send(String message) throws RemoteException {
-		// TODO Auto-generated method stub
+		
 		return null;
 	}
 

@@ -121,6 +121,10 @@ public class LockManager {
 		this.txnTime.put(gid, time);
 	}
 	
+	public boolean isPrepared(String gid){
+		return this.txnTime.containsKey(gid);
+	}
+	
 	public Map<String, String> getMessages(String gid){
 		return this.message.get(gid);
 	}

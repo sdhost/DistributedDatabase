@@ -35,6 +35,12 @@ public class DataManager {
 		this.TupleIdToValue.put(tupleID, newValue);
 		
 	}
+	/**
+	 * Using to check whether tuple is in this server
+	 */
+	public boolean exist(String tupleID){
+		return this.TupleIdToValue.contains(tupleID);
+	}
 	
 	public void Abort(int gid){
 		LinkedList<String> undoList = this.log.Abort(gid);
