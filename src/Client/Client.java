@@ -5,6 +5,7 @@ import java.rmi.*;
 
 import Server.DataOperationInterface;
 import Server.State;
+import Server.TransactionManager;
 
 public class Client{
 	private Registry registry;
@@ -37,6 +38,7 @@ public class Client{
 		
 		String gid = rmiServer.txnCreatingAccounts(balance);
 		
+		
 		while(true){
 			State s = rmiServer.getTxnState(gid);
 			if( s == State.FINISH)
@@ -51,6 +53,10 @@ public class Client{
 				continue;
 			}
 		}
+		
+		
+		
+		
 	}
 	
 	/**

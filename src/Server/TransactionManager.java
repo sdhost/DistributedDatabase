@@ -1,15 +1,20 @@
 package Server;
 
 import java.io.IOException;
+import java.io.Serializable;
+import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class TransactionManager {
+public class TransactionManager implements Serializable{
 
 	private Scheduler _scheduler;
 	private CommitCoordinator _2PC;
+	
+	private List<ServerCommunicationInterface> neighbour_server;
+	
 	
 	//TODO: Kasper: For each finished transaction, Scheduler should create a ProcessedTransaction object for it and put that into this queue
 	public ConcurrentLinkedQueue<ProcessedTransaction> _processedTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
@@ -113,17 +118,58 @@ public class TransactionManager {
 		return String.valueOf(balance - amount);
 	}
 
+	//Assume uid1 are in this server, uid2 in remote server or this server
 	public String txnTransfer(String gid, String uid1, String uid2, int amount,
-			Long timestamp) {
+			Long timestamp) throws RemoteException {
+		boolean exist = false;
+		ServerCommunicationInterface svr2 = null;
+		if(this.isExist(uid2)){
+			exist = true;
+		}else{
+			for(ServerCommunicationInterface svr:this.neighbour_server){
+				if(svr.isExist(uid2)){
+					svr2 = svr;
+					exist = true;
+					break;
+				}
+			}
+		}
+		
+		if(!exist){
+			ServerGUI.log(uid2 + " accounts not exist in all the servers");
+			return null;
+		}
+		int balance1, balance2;
+		
+		
 		List<Operation> toApply = new ArrayList<Operation>();
 		toApply.add(new Operation().read(gid, uid1));
-		toApply.add(new Operation().read(gid, uid2));
+		if(svr2 == null){
+			toApply.add(new Operation().read(gid, uid2));
+			
+			List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
+			ResultSet result = rs.get(0);
+			balance1 = Integer.valueOf(((String)result.getVal()));
+			
+			result = rs.get(1);
+			balance2 = Integer.valueOf(((String)result.getVal()));
+		}else{
+			List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
+			ResultSet result = rs.get(0);
+			balance1 = Integer.valueOf(((String)result.getVal()));
+			
+			toApply.clear();
+			toApply.add(new Operation().read(gid, uid2));
+			rs = svr2.remoteExecute(toApply, gid, timestamp);
+			
+			result = rs.get(0);
+			balance2 = Integer.valueOf(((String)result.getVal()));
+		}
 		
-		List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
-		ResultSet result = rs.get(0);
-		int balance1 = Integer.valueOf(((String)result.getVal()));
-		result = rs.get(1);
-		int balance2 = Integer.valueOf(((String)result.getVal()));
+		
+		
+		
+		
 		
 		//Add error check if needed, just remove comment for following code and deal with the exception with outer function
 //		if(balance1 < amount){
@@ -135,22 +181,35 @@ public class TransactionManager {
 		balance2 += amount;
 		toApply.clear();
 		toApply.add(new Operation().write(gid, uid1, String.valueOf(balance1)));
-		toApply.add(new Operation().write(gid, uid2, String.valueOf(balance2)));
+		
+		
+		
+		if(svr2 == null){
+			toApply.add(new Operation().write(gid, uid2, String.valueOf(balance2)));
+			
+			_scheduler.execute(toApply, gid, timestamp);
+		}else{
+			_scheduler.execute(toApply, gid, timestamp);
+			toApply.clear();
+			toApply.add(new Operation().write(gid, uid2, String.valueOf(balance2)));
+			svr2.remoteExecute(toApply, gid, timestamp);
+		}
+		
 		
 		return String.valueOf(balance1);
 	}
 
-	public void initialNeighbour(List<TransactionManager> neighbour_tm) {
-		List<Scheduler> neighbour_scheduler = new ArrayList<Scheduler>();
-		for(TransactionManager tm:neighbour_tm){
-			neighbour_scheduler.add(tm._scheduler);
-		}
-		
-		this._scheduler.initialNeighbour(neighbour_scheduler);
-		
+	public void initNeighbour(List<ServerCommunicationInterface> neighbour){
+		this.neighbour_server = neighbour;
+	}
+	
+	public List<ResultSet> executeRemote(List<Operation> ops, String gid, long timestamp){
+		return this._scheduler.execute(ops, gid, timestamp);
 	}
 
-
+	public boolean isExist(String tupleId){
+		return this._scheduler.isInServer(tupleId);
+	}
 	
 
 
