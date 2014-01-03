@@ -28,13 +28,11 @@ public class CommitCoordinator implements Runnable{
 	
 	@Override
 	public void run(){
-		// TODO Auto-generated method stub
 		while(true){
 			if(processedTxn.size() == 0){
 				try {
 					Thread.sleep(500);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
@@ -46,7 +44,7 @@ public class CommitCoordinator implements Runnable{
 						if(initiatedTxn.containsKey(gid)){
 							//TODO:write prepare message to log
 							
-
+							
 							State decision = State.EMPTY;
 							//initialized a vote pool to store the vote results
 							ArrayList<State> votePool = new ArrayList<State>();
@@ -60,30 +58,30 @@ public class CommitCoordinator implements Runnable{
 										try {
 											registry = LocateRegistry.getRegistry(serverAddress, serverPort);
 											rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
-											
-											//wait for a while if connection failed
-											State vote = rmiServer.replyVote(gid);
-											if( vote == null){
-												Thread.sleep(500);
+											State vote;
+											do{
+												//if the participant failed, assume it returned abort
+												vote = rmiServer.replyVote(gid);
+												if(vote == State.OFFLINE){
+													vote = State.PREABORT;
+													break;
+												}
+												if(vote == State.TPCWAIT || vote == null){
+													Thread.sleep(500);
+												}
 											}
+											while(vote == State.TPCWAIT || vote == null);
 											
-											//abort the transaction if there is still no reply after a predefined time interval
-											rmiServer.replyVote(gid);
-											if(vote == null){
-												decision = State.TPCABORT;
-											}
-											else{
-												votePool.add(vote);
-												//make decision after receiving all the vote resuts
-												if(votePool.size() == initiatedTxn.get(gid).size() + 1){
-													if(votePool.contains(State.PREABORT))
+											votePool.add(vote);
+											//make decision after receiving all the vote resuts
+											if(votePool.size() == initiatedTxn.get(gid).size() + 1){
+												if(votePool.contains(State.PREABORT))
 														decision = State.TPCABORT;
 													else
 														decision = State.TPCCOMMIT;
 													
 													break;
 												}
-											}
 									
 										} catch (RemoteException | NotBoundException | InterruptedException e1) {continue;}
 										

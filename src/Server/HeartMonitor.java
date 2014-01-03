@@ -13,7 +13,7 @@ import java.util.Map.Entry;
 public class HeartMonitor implements Runnable{
 	public Map<Integer, State> heartbeatStates;
 	public int serverId;
-	public long period = 3000;
+	public long period = 500;
 	public Registry registry;
 	public ServerCommunicationInterface rmiServer;
 	public Configuration conf;

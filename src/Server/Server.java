@@ -47,7 +47,6 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         serverState = State.ONLINE;
         uniqueServerId = serverId;
         
-        
         _tm = new TransactionManager();
         
         //Make sure the uid will be valid
@@ -200,6 +199,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	
 	@Override
 	public State replyVote(String gid){
+		if(serverState == State.OFFLINE)
+			return State.OFFLINE;
+		
 		ProcessedTransaction targetTxn = null;
 		Iterator<ProcessedTransaction> it = _tm._processedTxn.iterator();
 		while(it.hasNext()){
@@ -207,25 +209,12 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			if(txn.getGid() == gid)
 				targetTxn = txn;
 		}
-		if(targetTxn == null){
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
 		
-		it = _tm._processedTxn.iterator();
-		while(it.hasNext()){
-			ProcessedTransaction txn = it.next();
-			if(txn.getGid() == gid)
-				targetTxn = txn;
-		}
 		if(targetTxn == null){
 
 			//TODO: write abort into log
 			//TODO:abort this transaction
-			return State.PREABORT;
+			return State.TPCWAIT;
 		}
 		else{
 			if(targetTxn.getState() == State.PREABORT){
@@ -243,6 +232,8 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	//proceed the global vote decision
 	@Override
 	public String proceedVoteDecision(String gid, State decision){
+		if(serverState == State.OFFLINE)
+			return gid;
 		if(decision == State.TPCCOMMIT){
 			//TODO: write commit into log
 			_tm.commit(gid);
