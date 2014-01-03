@@ -68,6 +68,8 @@ public class LockManager {
 			boolean wait = false;
 			boolean abortOther = false;
 			for(Entry<String, Boolean> e:oldLock.entrySet()){
+				if(e.getKey() == gid)
+					continue;
 				if(e.getValue() || type){
 					if(this.txnTime.get(e.getKey()) > this.txnTime.get(gid)){
 						abortOther = true;
@@ -164,6 +166,7 @@ public class LockManager {
 		}
 		else{//Since the simultaneous transaction will not be a lot, 
 			// we will not use separate lock list for each transaction but search the whole lock tables for this transaction
+			LinkedList<String> noLockEntry = new LinkedList<String>();
 			for(Entry<String, LinkedHashMap<String, Boolean>> entryTuple:this.tupleLocks.entrySet()){
 				if(entryTuple.getValue().containsKey(gid)){
 					entryTuple.getValue().remove(gid);
@@ -210,12 +213,21 @@ public class LockManager {
 						if(!processed.isEmpty()){
 							for(Integer idx:processed)
 								this.waitingQueue.get(entryTuple.getKey()).remove(idx.intValue());
+							if(this.waitingQueue.get(entryTuple.getKey()).isEmpty())
+								this.waitingQueue.remove(entryTuple.getKey());
 						}
 					}
 				}
+				if(entryTuple.getValue().isEmpty())
+					noLockEntry.add(entryTuple.getKey());
 			}
 			//Remove the entries in txnTime
 			this.txnTime.remove(gid);
+			
+			//Remove the lock table for all the tuples that didn't have any locks
+			for(String tuple:noLockEntry)
+				this.tupleLocks.remove(tuple);
+			
 			return false;//May need to return some other informations if there exist some abort in processing the waiting requests
 			
 		}
@@ -225,13 +237,13 @@ public class LockManager {
 	
 	//Check whether a tuple lock request has been granted
 	//This function only check the granted list, will not check whether this request is in waiting queue
-	public boolean isLocked(String gid, String tupleId){
-		if(this.tupleLocks.get(tupleId).containsKey(gid))
+	public boolean isLocked(String gid, String tupleId, boolean type){
+		if(this.tupleLocks.get(tupleId).containsKey(gid) && this.tupleLocks.get(tupleId).get(gid) == type){
 			synchronized(this){
 				this.notify();
 				return true;
 			}
-		else
+		}else
 			return false;
 	}
 	

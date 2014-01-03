@@ -57,7 +57,7 @@ public class Scheduler {
 	private String read(String tupleID, String gid) throws Exception {
 		if (_lockmanager.lock(gid, tupleID, false)) {
 			// Shared lock not granted
-			while (!_lockmanager.isLocked(gid, tupleID)) {
+			while (!_lockmanager.isLocked(gid, tupleID, false)) {
 				// Sleep, until lock is granted
 				try {
 					Thread.sleep(500);	
@@ -75,7 +75,7 @@ public class Scheduler {
 	private void write(String tupleID, String newValue, String gid) throws Exception {
 		if (_lockmanager.lock(gid, tupleID, true)) {
 			// Exclusive lock not granted
-			while (!_lockmanager.isLocked(gid, tupleID)) {
+			while (!_lockmanager.isLocked(gid, tupleID, true)) {
 				// Sleep, until lock is granted
 				try {
 					Thread.sleep(500);	
