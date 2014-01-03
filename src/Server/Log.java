@@ -37,7 +37,7 @@ public class Log {
 		this.serialID += 1;
 	}
 	
-	public LinkedList<String> Abort(int gid){
+	public LinkedList<String> Abort(String gid){
 		this.rawLog.put(serialID, String.valueOf(gid) + "\tAbort");
 		LinkedList<String> undoList = new LinkedList<String>();
 		

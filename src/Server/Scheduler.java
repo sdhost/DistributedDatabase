@@ -11,7 +11,6 @@ import Server.Operation.type;
 public class Scheduler {
 	private LockManager _lockmanager;
 	private DataManager _datamanager;
-	//private List<Scheduler> neighbour = null;
 	
 	public Scheduler(TransactionManager tm) {
 		_lockmanager = new LockManager(tm);
@@ -55,9 +54,27 @@ public class Scheduler {
 		}
 		
 		
+		/**
 		// Check messages
-		
-		
+		for (Entry<String, String> e : _lockmanager.getMessages(gid).entrySet()) {
+			if (e.getValue().toLowerCase().contains("waiting for other transactions finish")) {
+				// TODO?
+			} else if (e.getValue().toLowerCase().contains("need to abort")) {
+				
+				// We must abort a transaction
+				_datamanager.Abort(e.getKey());
+				
+				// TODO?
+			} else if (e.getValue().toLowerCase().contains("no lock request exist for this transaction")) {
+				// TODO?				
+			} else if (e.getValue().toLowerCase().contains("call prepareLocking to initialize the timestamp first")) {
+				// Should never happen. Indicative of programming bug.
+				ServerGUI.log("Software bug found!");
+			} else {
+				ServerGUI.log("Uncatched message: " + e.getValue() + " for GID: " + e.getKey());
+			}
+		}
+		*/
 		return rs;
 	}
 	
@@ -97,12 +114,6 @@ public class Scheduler {
 		// Exclusive lock granted
 		_datamanager.write(tupleID, newValue, gid);
 	}
-
-	/**public void initialNeighbour(List<Scheduler> neighbour_scheduler) {
-		neighbour = neighbour_scheduler;
-		
-		
-	}	*/
 	
 	public boolean isInServer(String tupleID){
 		return _datamanager.exist(tupleID);

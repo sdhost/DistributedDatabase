@@ -42,8 +42,11 @@ public class DataManager {
 		return this.TupleIdToValue.contains(tupleID);
 	}
 	
-	public void Abort(int gid){
+	public void Abort(String gid){
 		LinkedList<String> undoList = this.log.Abort(gid);
+		
+		// WRITE all items from the undoList!
+		
 		//TODO: Do something about the undoList, need to have an undo strategy
 	}
 	
