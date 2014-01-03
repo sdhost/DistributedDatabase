@@ -67,22 +67,27 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         heartThread.start();
 	}
 	
-	public void initialNeighbour(Configuration conf){
+	public void initialNeighbour(Configuration conf) {
 		this.neighbour_server = new ArrayList<ServerCommunicationInterface>();
 		for(Entry<Integer, String> e : conf.getAllServers().entrySet()){
 			int id = e.getKey();
 			if(id != this.uniqueServerId){
 					String serverAddress = e.getValue().split(":")[0];
 					int serverPort = Integer.valueOf(e.getValue().split(":")[1]);
-					try {
-						registry = LocateRegistry.getRegistry(serverAddress, serverPort);
-						ServerCommunicationInterface rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
-						this.neighbour_server.add(rmiServer);
-					} catch (IOException e1) {
-						e1.printStackTrace();
-					} catch (NotBoundException e1) {
-						e1.printStackTrace();
-					}	
+					
+					while (true) {
+						try {
+							registry = LocateRegistry.getRegistry(serverAddress, serverPort);	
+							ServerCommunicationInterface rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
+							this.neighbour_server.add(rmiServer);
+							break;
+						} catch (Exception ex) {
+							try {
+								System.out.println("Waiting for server " + serverAddress + ":" + serverPort + " to start");
+								Thread.sleep(1000);	
+							} catch (InterruptedException ee) {}
+						}
+					}
 			}
 		}
 		
@@ -92,8 +97,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 	@Override
 	public State getTxnState(String gid) throws RemoteException {
-		ServerGUI.log("Called getTxnState");
-		return State.ONLINE;
+		if (txnStates.containsKey(gid))
+			return txnStates.get(gid); 
+		return State.NONEXIST;
 	}
 
 
@@ -136,16 +142,12 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	
 	@Override
 	public String txnCreatingAccounts(int balance) throws RemoteException {
-		
-		
 		String gid = this.txnCreation();
 		String uid = this.nextUid();
 		_tm.txnCreatingAccounts(balance, gid, uid, this.txnTime.get(gid));
-		//May add some error processing code here
+
 		this.txnStates.put(gid, State.FINISH);
 		this.txnResult.put(gid, uid);
-		
-		
 		return gid;
 	}
 
