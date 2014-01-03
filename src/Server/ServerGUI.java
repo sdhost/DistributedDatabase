@@ -11,13 +11,20 @@ import java.util.Map.Entry;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTextArea;
+import javax.swing.JButton;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+import javax.swing.JCheckBox;
 
 public class ServerGUI {
-	private JFrame frame;
+	private static JFrame frame;
 	private Server server;
 	private static JTextArea txtOutput;
 	private JLabel lblServerPort;
 	private JLabel lblServerIP;
+	private JButton butFail;
+	private JButton butNormal;
+	private static JCheckBox chckbxUsePopups;
 	
 	/**
 	 * Launch the application.
@@ -85,6 +92,42 @@ public class ServerGUI {
 			
 			lblServerIP.setText(serverIp);
 			lblServerPort.setText(String.valueOf(serverPort));
+			
+			butFail = new JButton("Fail");
+			butNormal = new JButton("Normal");
+			butNormal.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent arg0) {
+					
+					// Return to normal running operation
+					butNormal.setEnabled(false);
+					butFail.setEnabled(true);
+					ServerGUI.log("Server is in normal mode");
+					server.setServerState(State.ONLINE);
+				}
+			});
+			
+			
+			butFail.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent arg0) {
+					
+					// Simulate failure
+					butNormal.setEnabled(true);
+					butFail.setEnabled(false);
+					ServerGUI.log("Server is in failure mode");
+					server.setServerState(State.OFFLINE);					
+				}
+			});
+			butFail.setBounds(473, 34, 114, 25);
+			frame.getContentPane().add(butFail);
+			
+			
+			butNormal.setEnabled(false);
+			butNormal.setBounds(344, 34, 117, 25);
+			frame.getContentPane().add(butNormal);
+			
+			chckbxUsePopups = new JCheckBox("Use popups");
+			chckbxUsePopups.setBounds(458, 8, 129, 23);
+			frame.getContentPane().add(chckbxUsePopups);
         } catch(UnknownHostException uhe){
         	log(uhe.toString());
         	return;
@@ -131,5 +174,18 @@ public class ServerGUI {
 		txtOutput = new JTextArea();
 		txtOutput.setBounds(12, 66, 575, 239);
 		frame.getContentPane().add(txtOutput);
+	}
+	public JButton getButFail() {
+		return butFail;
+	}
+	public JButton getButNormal() {
+		return butNormal;
+	}
+	
+	public static JFrame getFrame() {
+		return frame;
+	}
+	public static JCheckBox getChckbxUsePopups() {
+		return chckbxUsePopups;
 	}
 }

@@ -35,6 +35,8 @@ public class Client{
 			return null;
 		
 		String gid = rmiServer.txnCreatingAccounts(balance);
+		if (gid == null)
+			return null;
 		
 		while(true){
 			State s = rmiServer.getTxnState(gid);
@@ -53,28 +55,29 @@ public class Client{
 	
 	/**
 	 * Check the balance for account uid
-	 * @return balance or -1 in case of problems
+	 * @return balance or null in case of problems
 	 */
-	public double txnCheckingBalance(String uid) throws RemoteException{
+	public String txnCheckingBalance(String uid) throws RemoteException{
 		if(!initialized){
-			return -1;
+			return null;
 		}
 		
 		String gid = rmiServer.txnCheckingBalance(uid);
+		if (gid == null)
+			return null;
 		
 		while(true){
 			State s = rmiServer.getTxnState(gid);
 			if( s == State.FINISH)
-				return (Double)rmiServer.getTxnResult(gid);
+				return (String)rmiServer.getTxnResult(gid);
 			else if(s == State.ERROR){
-				//TODO: do something about the error
-				//The serve could return more information about the error
-				Object err = rmiServer.getTxnResult(gid);
-				return -1;
-			}else{
-				//Still processing
-				continue;
+				ClientGUI.log(rmiServer.getTxnResult(gid).toString());
+				return null;
 			}
+
+			try {
+				Thread.sleep(100);	
+			} catch (InterruptedException ex) {}
 		}
 		
 		
@@ -84,26 +87,27 @@ public class Client{
 	 * Deposit some money to account uid
 	 * @return balance or -1 in case of problems
 	 */
-	public double txnDeposit(String uid, int amount) throws RemoteException{
+	public String txnDeposit(String uid, int amount) throws RemoteException{
 		if(!initialized){
-			return -1;
+			return null;
 		}
 		
 		String gid = rmiServer.txnDeposit(uid, amount);
+		if (gid == null)
+			return null;
 		
 		while(true){
 			State s = rmiServer.getTxnState(gid);
 			if( s == State.FINISH)
-				return (Double)rmiServer.getTxnResult(gid);
+				return (String)rmiServer.getTxnResult(gid);
 			else if(s == State.ERROR){
-				//TODO: do something about the error
-				//The serve could return more information about the error
-				Object err = rmiServer.getTxnResult(gid);
-				return -1;
-			}else{
-				//Still processing
-				continue;
+				ClientGUI.log(rmiServer.getTxnResult(gid).toString());
+				return null;
 			}
+
+			try {
+				Thread.sleep(100);	
+			} catch (InterruptedException ex) {}
 		}
 	}
 	
@@ -111,26 +115,27 @@ public class Client{
 	 * Withdraw some money from account uid
 	 * @return balance or negative numbers in case of error
 	 */
-	public double txnWithdraw(String uid, int amount) throws RemoteException{
+	public String txnWithdraw(String uid, int amount) throws RemoteException{
 		if(!initialized){
-			return -1;
+			return null;
 		}
 		
 		String gid = rmiServer.txnWithdraw(uid, amount);
+		if (gid == null)
+			return null;
 		
 		while(true){
 			State s = rmiServer.getTxnState(gid);
 			if( s == State.FINISH)
-				return (Double)rmiServer.getTxnResult(gid);
+				return (String)rmiServer.getTxnResult(gid);
 			else if(s == State.ERROR){
-				//TODO: do something about the error
-				//The serve could return more information about the error
-				Object err = rmiServer.getTxnResult(gid);
-				return -1;
-			}else{
-				//Still processing
-				continue;
+				ClientGUI.log(rmiServer.getTxnResult(gid).toString());
+				return null;
 			}
+
+			try {
+				Thread.sleep(100);	
+			} catch (InterruptedException ex) {}
 		}
 		
 	}
@@ -139,26 +144,27 @@ public class Client{
 	 * Transfer some money from account uid1 to uid2
 	 * @return balance of uid1 or negative numbers in case of error
 	 */
-	public double txnTransfer(String uid1, String uid2, int amount) throws RemoteException{
+	public String txnTransfer(String uid1, String uid2, int amount) throws RemoteException{
 		if(!initialized){
-			return -1;
+			return null;
 		}
 
 		String gid = rmiServer.txnTransfer(uid1, uid2, amount);
+		if (gid == null)
+			return null;
 		
 		while(true){
 			State s = rmiServer.getTxnState(gid);
 			if( s == State.FINISH)
-				return (Double)rmiServer.getTxnResult(gid);
+				return (String)rmiServer.getTxnResult(gid);
 			else if(s == State.ERROR){
-				//TODO: do something about the error
-				//The serve could return more information about the error
-				Object err = rmiServer.getTxnResult(gid);
-				return -1;
-			}else{
-				//Still processing
-				continue;
+				ClientGUI.log(rmiServer.getTxnResult(gid).toString());
+				return null;
 			}
+
+			try {
+				Thread.sleep(100);	
+			} catch (InterruptedException ex) {}
 		}
 		
 	}
