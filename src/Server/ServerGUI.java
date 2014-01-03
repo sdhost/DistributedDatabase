@@ -151,6 +151,7 @@ public class ServerGUI {
 	
 	public static void log(String text) {
 		Date now = new Date(System.currentTimeMillis());
+		if(txtOutput != null)
 		txtOutput.setText(txtOutput.getText() + "\n" + now.toString() + " : " + text);
 	}
 

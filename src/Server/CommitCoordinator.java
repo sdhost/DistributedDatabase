@@ -36,13 +36,14 @@ public class CommitCoordinator implements Runnable{
 			if(coordinatingTxn.size() == 0){
 				try {
 					Thread.sleep(500);
+					ServerGUI.log("Waiting ...");
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
 			else{
 				while(coordinatingTxn.size()!=0){
-						
+							ServerGUI.log("got a transfer");
 							ProcessedTransaction txn = coordinatingTxn.element();
 							String gid = txn.getGid();
 							//TODO: add start log in transaction manager
@@ -136,6 +137,8 @@ public class CommitCoordinator implements Runnable{
 										multiTxnState.unfinishedTxn.remove(gid);
 										multiTxnState.finishedTxn.put(gid, State.FINISH);
 									}
+									ServerGUI.log("Finished with state:" + decision);
+									
 								}else{
 									//this won't happen
 								}

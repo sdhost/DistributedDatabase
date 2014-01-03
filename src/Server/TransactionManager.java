@@ -276,7 +276,6 @@ public class TransactionManager implements Serializable {
 				ServerGUI.log("Problem with checking balance");
 				
 				// TODO: Set status to PREABORT
-				
 				return null;
 			}
 			balance1 = Integer.valueOf(((String)rs.iterator().next().getVal()));
@@ -290,6 +289,7 @@ public class TransactionManager implements Serializable {
 				ServerGUI.log("Problem with checking balance");
 
 				// TODO: Set status to PREABORT
+				
 			}	
 			balance2 = Integer.valueOf(((String)rs.get(0).getVal()));
 		}
