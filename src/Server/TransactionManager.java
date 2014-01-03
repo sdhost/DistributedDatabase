@@ -56,19 +56,22 @@ public class TransactionManager implements Serializable {
 	 * Create new account (only on connected server)
 	 */
 	public String txnCreatingAccounts(int balance, String gid, String uid, Long timestamp) {
-		
-		
-		if (ServerGUI.getChckbxUsePopups().isSelected())
-			JOptionPane.showMessageDialog(ServerGUI.getFrame(), "Step1");
-		
-		_scheduler.prepareTx(gid, timestamp);
+		modalPopup(gid, StepMessages.BEGIN.value);
+				
+		_scheduler.prepareTx(gid, timestamp);	
 		if (_scheduler.execute(Arrays.asList(new Operation().write(gid, uid, String.valueOf(balance))), gid, timestamp) != null) {
 			// SUCCES
+			
+			modalPopup(gid, StepMessages.PRECOMMIT.value);
 			_scheduler.commit(gid);
+			modalPopup(gid, StepMessages.COMMITED.value);
+			
 			return uid;
 		} else {
 			// PROBLEM
-			try {_scheduler.abort(gid);} catch (Exception e) {}
+			modalPopup(gid, StepMessages.PREABORT.value);
+			try {_scheduler.abort(gid);} catch (Exception e) {}			
+			modalPopup(gid, StepMessages.ABORTED.value);
 			ServerGUI.log("Problem with creating account");
 			return null;
 		}
@@ -78,15 +81,21 @@ public class TransactionManager implements Serializable {
 	 * Reads balance of account belonging to uid and returns value as string (only on connected server)
 	 */
 	public String txnCheckingBalance(String gid, String uid, Long timestamp) {
+		modalPopup(gid, StepMessages.BEGIN.value);
+		
 		_scheduler.prepareTx(gid, timestamp);
 		List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid)), gid, timestamp);
 		if (rs != null) {
 			// SUCCES
+			modalPopup(gid, StepMessages.PRECOMMIT.value);
 			_scheduler.commit(gid);
+			modalPopup(gid, StepMessages.COMMITED.value);
 			return (String)rs.iterator().next().getVal();
 		} else {
 			// Error
+			modalPopup(gid, StepMessages.PREABORT.value);
 			try {_scheduler.abort(gid);} catch (Exception e) {}
+			modalPopup(gid, StepMessages.ABORTED.value);
 			ServerGUI.log("Problem with checking balance");
 			return null;
 		}
@@ -97,13 +106,16 @@ public class TransactionManager implements Serializable {
 	 * Returns balance on account
 	 */
 	public String txnDeposit(String gid, String uid, int amount, Long timestamp) {
+		modalPopup(gid, StepMessages.BEGIN.value);
 		_scheduler.prepareTx(gid, timestamp);
 
 		//Read the current value
 		List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid)), gid, timestamp);
 		if (rs == null) {
 			// Error
+			modalPopup(gid, StepMessages.PREABORT.value);
 			try {_scheduler.abort(gid);} catch (Exception e) {}
+			modalPopup(gid, StepMessages.ABORTED.value);
 			ServerGUI.log("Problem reading balance of account");
 			return null;
 		}
@@ -114,7 +126,9 @@ public class TransactionManager implements Serializable {
 		// Write updatedBalance
 		rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid, String.valueOf(updatedBalance))), gid, timestamp);
 		if (rs == null) {
+			modalPopup(gid, StepMessages.PREABORT.value);
 			try {_scheduler.abort(gid);} catch (Exception e) {}
+			modalPopup(gid, StepMessages.ABORTED.value);
 			ServerGUI.log("Problem writing updated balance of account");
 			return null;
 		}
@@ -123,11 +137,15 @@ public class TransactionManager implements Serializable {
 		rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid)), gid, timestamp);
 		if (rs != null) {
 			// SUCCES
+			modalPopup(gid, StepMessages.PRECOMMIT.value);
 			_scheduler.commit(gid);
+			modalPopup(gid, StepMessages.COMMITED.value);
 			return (String)rs.iterator().next().getVal();
 		} else {
 			// Error
+			modalPopup(gid, StepMessages.PREABORT.value);
 			try {_scheduler.abort(gid);} catch (Exception e) {}
+			modalPopup(gid, StepMessages.ABORTED.value);
 			ServerGUI.log("Problem with checking balance");
 			return null;
 		}
@@ -137,14 +155,17 @@ public class TransactionManager implements Serializable {
 	 * Withdraw money from the account belonging to user with uid (only on connected server)
 	 * Returns balance on account
 	 */
-	public String txnWithdraw(String gid, String uid, int amount, Long timestamp){
+	public String txnWithdraw(String gid, String uid, int amount, Long timestamp) {
+		modalPopup(gid, StepMessages.BEGIN.value);
 		_scheduler.prepareTx(gid, timestamp);
 		
 		// Read the current balance from the account
 		List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid)), gid, timestamp);
 		if (rs == null) {
 			// Error
+			modalPopup(gid, StepMessages.PREABORT.value);
 			try {_scheduler.abort(gid);} catch (Exception e) {}
+			modalPopup(gid, StepMessages.ABORTED.value);
 			ServerGUI.log("Problem reading balance of account");
 			return null;
 		}
@@ -157,7 +178,9 @@ public class TransactionManager implements Serializable {
 		// Write updated amount
 		rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid, String.valueOf(updatedBalance))), gid, timestamp);
 		if (rs == null) {
+			modalPopup(gid, StepMessages.PREABORT.value);
 			try {_scheduler.abort(gid);} catch (Exception e) {}
+			modalPopup(gid, StepMessages.ABORTED.value);
 			ServerGUI.log("Problem writing updated balance of account");
 			return null;
 		}
@@ -166,11 +189,15 @@ public class TransactionManager implements Serializable {
 		rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid)), gid, timestamp);
 		if (rs != null) {
 			// SUCCES
+			modalPopup(gid, StepMessages.PRECOMMIT.value);
 			_scheduler.commit(gid);
+			modalPopup(gid, StepMessages.COMMITED.value);
 			return (String)rs.iterator().next().getVal();
 		} else {
 			// Error
+			modalPopup(gid, StepMessages.PREABORT.value);
 			try {_scheduler.abort(gid);} catch (Exception e) {}
+			modalPopup(gid, StepMessages.ABORTED.value);
 			ServerGUI.log("Problem with checking balance");
 			return null;
 		}
@@ -185,6 +212,7 @@ public class TransactionManager implements Serializable {
 	 * @return	balance of account belonging to uid1
 	 */
 	public String txnTransfer(String gid, String uid1, String uid2, int amount,	Long timestamp) throws RemoteException {
+		modalPopup(gid, StepMessages.BEGIN.value);
 		_scheduler.prepareTx(gid, timestamp);
 		
 		/**
@@ -226,7 +254,9 @@ public class TransactionManager implements Serializable {
 			// Read balance1 and balance2 from current connected server
 			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid1), new Operation().read(gid, uid2)), gid, timestamp);
 			if (rs == null) {
+				modalPopup(gid, StepMessages.PREABORT.value);
 				try {_scheduler.abort(gid);} catch (Exception e) {}
+				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with checking balance");
 				return null;
 			}
@@ -240,7 +270,9 @@ public class TransactionManager implements Serializable {
 			// Read balance1 from current connected server and balance2 from connected server
 			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid1)), gid, timestamp);
 			if (rs == null) {
+				modalPopup(gid, StepMessages.PREABORT.value);
 				try {_scheduler.abort(gid);} catch (Exception e) {}
+				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with checking balance");
 				
 				// TODO: Set status to PREABORT
@@ -252,7 +284,9 @@ public class TransactionManager implements Serializable {
 			// Read balance2 from remote serverid
 			rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().read(gid, uid2)), gid, timestamp, serverId);
 			if (rs == null) {
+				modalPopup(gid, StepMessages.PREABORT.value);
 				try {_scheduler.abort(gid);} catch (Exception e) {}
+				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with checking balance");
 
 				// TODO: Set status to PREABORT
@@ -269,7 +303,9 @@ public class TransactionManager implements Serializable {
 			// Update uid1 and uid2 on connected server (as accounts are both here)				
 			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(updatedBalance1)), new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp);
 			if (rs == null) {
+				modalPopup(gid, StepMessages.PREABORT.value);
 				try {_scheduler.abort(gid);} catch (Exception e) {}
+				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with writing updated balance");
 				return null;
 			}
@@ -278,7 +314,9 @@ public class TransactionManager implements Serializable {
 			// Update uid1 on connected server and uid2 on remote server
 			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(balance1))), gid, timestamp);
 			if (rs == null) {
+				modalPopup(gid, StepMessages.PREABORT.value);
 				try {_scheduler.abort(gid);} catch (Exception e) {}
+				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with writing updated balance");
 				
 				// TODO: Set status to PREABORT
@@ -286,20 +324,24 @@ public class TransactionManager implements Serializable {
 				return null;
 			}
 			
-			uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(balance2))), gid, timestamp, serverId);	
+			rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(balance2))), gid, timestamp, serverId);	
 			if (rs == null) {
+				modalPopup(gid, StepMessages.PREABORT.value);
 				try {_scheduler.abort(gid);} catch (Exception e) {}
+				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with writing updated balance");
 				return null;
 			}			
-			
 		}
 		
 		// Update the ProcessedTransaction state to precommit
 		for (ProcessedTransaction pt : _processedMultiSiteTxn) {
-			if (pt.getGid().equals(gid))
+			if (pt.getGid().equals(gid)) {
+				modalPopup(gid, StepMessages.PRECOMMIT.value);
 				pt.setState(State.PRECOMMIT);
-			if(_initiatedTxn.contains(gid)){
+			}
+				
+			if(_initiatedTxn.containsKey(gid)){
 				_coordinatorTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
 			}
 		}
@@ -322,5 +364,10 @@ public class TransactionManager implements Serializable {
 
 	public boolean exists(String tupleId) {
 		return this._scheduler.isInServer(tupleId);
+	}
+	
+	public void modalPopup(String gid, String message) {
+		if (ServerGUI.getChckbxUsePopups().isSelected())
+			JOptionPane.showMessageDialog(ServerGUI.getFrame(), "gid: " + gid + ":: " + message);	
 	}
 }
