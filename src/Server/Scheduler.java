@@ -13,8 +13,8 @@ public class Scheduler {
 	private DataManager _datamanager;
 	
 	public Scheduler(TransactionManager tm) {
-		_lockmanager = new LockManager(tm);
 		_datamanager = new DataManager();
+		_lockmanager = new LockManager(tm, _datamanager);
 	}
 	
 	/**
@@ -118,4 +118,15 @@ public class Scheduler {
 	public boolean isInServer(String tupleID){
 		return _datamanager.exist(tupleID);
 	}
+
+	public void abort(String gid) {
+		this._datamanager.Abort(gid);
+		
+	}
+	
+	public void commit(String gid){
+		this._datamanager.Commit(gid);
+	}
+	
+	
 }

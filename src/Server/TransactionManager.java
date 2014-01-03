@@ -46,8 +46,12 @@ public class TransactionManager implements Serializable {
 	
 	public void abort(String gid) {
 		
-		// TODO:abort transaction gid
+		this._scheduler.abort(gid);
 		
+	}
+	
+	public void commit(String gid){
+		this._scheduler.commit(gid);
 	}
 	
 	public String txnCheckingBalance(String gid, String uid, Long timestamp) {
@@ -218,12 +222,8 @@ public class TransactionManager implements Serializable {
 	public boolean isExist(String tupleId){
 		return this._scheduler.isInServer(tupleId);
 	}
-
-	public void commit(String gid) {
-		// TODO Auto-generated method stub
-		
-	}
 	
+
 
 
 }

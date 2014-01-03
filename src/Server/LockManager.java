@@ -21,12 +21,15 @@ public class LockManager {
 													// ErrorMessage will be split by tab("\t") if contains messages more than one column
 	private TransactionManager _tm = null;
 	
+	private DataManager _dm = null;
+	
 	// Maintain for each bank account
 	// - The type of lock that is currently held
 	// - A list of transactions holding the lock
 	// - a queue of lock requests
-	public LockManager(TransactionManager tm){
+	public LockManager(TransactionManager tm, DataManager dm){
 		this._tm = tm;
+		this._dm = dm;
 		this.tupleLocks = new ConcurrentHashMap<String, LinkedHashMap<String, Boolean>>();
 		this.txnTime = new ConcurrentHashMap<String, Long>();
 		this.waitingQueue = new ConcurrentHashMap<String, LinkedList<String>>();
