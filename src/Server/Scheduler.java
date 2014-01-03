@@ -99,7 +99,6 @@ public class Scheduler {
 
 	public void abort(String gid) throws Exception {
 		_datamanager.Abort(gid);
-		
 	}
 	
 	public void commit(String gid){

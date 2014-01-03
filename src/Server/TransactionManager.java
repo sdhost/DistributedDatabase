@@ -4,226 +4,229 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class TransactionManager implements Serializable {
-	private Thread _2PCThread;
-	private Scheduler _scheduler;
-	private CommitCoordinator _2PC;	
+	private static final long serialVersionUID = -6594855415638227595L;
 	private List<ServerCommunicationInterface> neighbour_server;
+	private CommitCoordinator _2PC;	
+	private Scheduler _scheduler;
+	private Thread _2PCThread;
+	
+	// Contain list of all txn, that is being 2PC coordinated by this server
+	public ConcurrentLinkedQueue<String> _coordinatorTxn;
+	
+	// Contains? (somebody add info!)
 	public ConcurrentLinkedQueue<ProcessedTransaction> _processedMultiSiteTxn;
 	
+	// Contains? (somebody add info!) 
 	public volatile ConcurrentHashMap<String, ArrayList<Integer>> _initiatedTxn = new ConcurrentHashMap<String, ArrayList<Integer>>();
+	
 	
 	public TransactionManager() throws IOException {
 		_scheduler = new Scheduler(this);
 		_2PC = new CommitCoordinator(this);
+		_coordinatorTxn = new ConcurrentLinkedQueue<String>();
 		_processedMultiSiteTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
 		
 		_2PCThread = new Thread(_2PC);
 		_2PCThread.start();
 	}
 	
-	public String txnCreatingAccounts(int balance, String gid, String uid, Long timestamp) {
-		
-		// Create list of operations to apply
-		List<Operation> toApply = new ArrayList<Operation>();
-		toApply.add(new Operation().write(gid, uid, String.valueOf(balance)));
-
-		// Send to scheduler
-		if (_scheduler.execute(toApply, gid, timestamp) != null) {
-			// SUCCES
-		} else {
-			// PROBLEM
-		}
-		
-		// What to return?
-		return null;
-	}
-	
-	public void abort(String gid) {
-		
-		this._scheduler.abort(gid);
-		
+	public void abort(String gid) throws Exception {
+		_scheduler.abort(gid);
 	}
 	
 	public void commit(String gid){
-		this._scheduler.commit(gid);
+		_scheduler.commit(gid);
 	}
 	
+	/**
+	 * Create new account (only on connected server)
+	 */
+	public String txnCreatingAccounts(int balance, String gid, String uid, Long timestamp) {
+		if (_scheduler.execute(Arrays.asList(new Operation().write(gid, uid, String.valueOf(balance))), gid, timestamp) != null) {
+			// SUCCES
+			return uid;
+		} else {
+			// PROBLEM
+			ServerGUI.log("Problem with creating account");
+			return null;
+		}
+	}
+	
+	/**
+	 * Reads balance of account belonging to uid and returns value as string (only on connected server)
+	 */
 	public String txnCheckingBalance(String gid, String uid, Long timestamp) {
-		// Create list of operations to apply
-		List<Operation> toApply = new ArrayList<Operation>();
-		toApply.add(new Operation().read(gid, uid));
-
-		// Send to scheduler
-		List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
-		ResultSet result = rs.iterator().next();
-		
-		if(result == null)
+		List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid)), gid, timestamp);
+		if (rs != null) {
+			// SUCCES
+			return (String)rs.iterator().next().getVal();
+		} else {
+			// Error
 			return null;
-		else
-			return (String)result.getVal();
+		}
 	}
 
+	/**
+	 * Deposit money for the account belonging to uid (only on connected server)
+	 * Returns balance on account
+	 */
 	public String txnDeposit(String gid, String uid, int amount, Long timestamp) {
-		
-		List<Operation> toApply = new ArrayList<Operation>();
-		toApply.add(new Operation().read(gid, uid));
 
 		//Read the current value
-		List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
-		ResultSet result = rs.iterator().next();
-		
-		int balance = Integer.valueOf((String)result.getVal());
-		
-		toApply.clear();
-		toApply.add(new Operation().write(gid, uid, String.valueOf(balance + amount)));
-		
-		rs = _scheduler.execute(toApply, gid, timestamp);
-		result = rs.iterator().next();
-		
-		if(result == null)
+		List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid)), gid, timestamp);
+		if (rs == null)
 			return null;
-		else
-			return this.txnCheckingBalance(gid, uid, timestamp);
+		
+		int balance = Integer.valueOf((String)rs.iterator().next().getVal());
+		int updatedBalance = balance + amount;
+		
+		// Write updatedBalance
+		rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid, String.valueOf(updatedBalance))), gid, timestamp);
+		if (rs == null)
+			return null;
+		
+		// Return new amount of money
+		return txnCheckingBalance(gid, uid, timestamp);
 	}
 
+	/**
+	 * Withdraw money from the account belonging to user with uid (only on connected server)
+	 * Returns balance on account
+	 */
 	public String txnWithdraw(String gid, String uid, int amount, Long timestamp){
-		
-		List<Operation> toApply = new ArrayList<Operation>();
-		toApply.add(new Operation().read(gid, uid));
 
-		//Read the current value
-		List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
-		ResultSet result = rs.iterator().next();
-		
-		int balance = Integer.valueOf((String)result.getVal());
-		
-		//Add error check if needed, just remove comment for following code and deal with the exception with outer function
-//		if(balance < amount){
-//			this.abort();
-//			throw new Exception("Not Enough Money, require " + amount + ", available " + balance);
-//		}
-			
-		
-		toApply.clear();
-		toApply.add(new Operation().write(gid, uid, String.valueOf(balance - amount)));
-		
-		rs = _scheduler.execute(toApply, gid, timestamp);
-		result = rs.iterator().next();
-				
-		if(result == null)
+		// Read the current balance from the account
+		List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid)), gid, timestamp);
+		if (rs == null)
 			return null;
-		else
-			return this.txnCheckingBalance(gid, uid, timestamp);
+		
+		int balance = Integer.valueOf((String)rs.iterator().next().getVal());
+		int updatedBalance = balance - amount;
+
+		if (updatedBalance >= 0) {
+			// Write updated amount
+			rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid, String.valueOf(updatedBalance))), gid, timestamp);
+			if (rs == null)
+				return null;
+		}
+		
+		return this.txnCheckingBalance(gid, uid, timestamp);
 	}
 
-	//Assume uid1 are in this server, uid2 in remote server or this server
-	public String txnTransfer(String gid, String uid1, String uid2, int amount,
-			Long timestamp) throws RemoteException {
-		boolean exist = false;
-		ServerCommunicationInterface svr2 = null;
-		if(this.isExist(uid2)){
-			exist = true;
-		}else{
-			for(ServerCommunicationInterface svr:this.neighbour_server){
+	/**
+	 * Transfer money from one account to another (from connected server -> remote server)
+	 * @param gid	global id of transaction
+	 * @param uid1	transfer from this account (assumed on connected server)
+	 * @param uid2	transfer to this account (can be on remote server)
+	 * @param amount	amount of money to transfer
+	 * @return	balance of account belonging to uid1
+	 */
+	public String txnTransfer(String gid, String uid1, String uid2, int amount,	Long timestamp) throws RemoteException {
+		
+		/**
+		 * This transaction is spanning multiple servers, and should be coordinated by 2PC
+		 * This server assumes the responsibility as a 2PC coordinator
+		 */
+		_coordinatorTxn.add(gid);
+		
+		
+		/**
+		 * Check if uid2 exists on any of the connected servers (including the currently connected one)
+		 */
+		boolean uid2Exists = false;
+		ServerCommunicationInterface uid2AccountOnSvr = null;
+		if(this.exists(uid2)){
+			uid2Exists = true;
+		} else {
+			for(ServerCommunicationInterface svr: neighbour_server) {
 				if(svr.isExist(uid2)){
-					svr2 = svr;
-					exist = true;
+					uid2AccountOnSvr = svr;
+					uid2Exists = true;
 					break;
 				}
 			}
 		}
 		
-		if(!exist){
-			ServerGUI.log(uid2 + " accounts not exist in all the servers");
+		if(!uid2Exists) {
+			ServerGUI.log(uid2 + " account does not exist in the servers");
 			return null;
 		}
-		int balance1, balance2;
 		
 		
-		List<Operation> toApply = new ArrayList<Operation>();
-		toApply.add(new Operation().read(gid, uid1));
-		ResultSet result;
-		if(svr2 == null){
-			toApply.add(new Operation().read(gid, uid2));
+		/**
+		 * Read balance1 and 2 (from uid1 and uid2)
+		 */
+		int balance1, balance2;		
+		if(uid2AccountOnSvr == null) {
+			// Read balance1 and balance2 from current connected server
+			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid1), new Operation().read(gid, uid2)), gid, timestamp);
+			if (rs == null)
+				return null;
 			
-			List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
-			result = rs.get(0);
-			balance1 = Integer.valueOf(((String)result.getVal()));
-			
-			result = rs.get(1);
-			balance2 = Integer.valueOf(((String)result.getVal()));
+			balance1 = Integer.valueOf(((String)rs.get(0).getVal()));
+			balance2 = Integer.valueOf(((String)rs.get(1).getVal()));
 		}else{
-			ArrayList<Integer> list = new ArrayList<Integer>();
-			list.add(svr2.getServerID());
-			this._initiatedTxn.put(gid, list);
-			List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
-			result = rs.get(0);
-			balance1 = Integer.valueOf(((String)result.getVal()));
+			// Store gid -> remote serverid
+			_initiatedTxn.put(gid, new ArrayList<Integer>(Arrays.asList(uid2AccountOnSvr.getServerID())));
 			
-			toApply.clear();
-			toApply.add(new Operation().read(gid, uid2));
-			rs = svr2.remoteExecute(toApply, gid, timestamp);
+			// Read balance1 from current connected server and balance2 from connected server
+			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid1)), gid, timestamp);
+			if (rs == null)
+				return null;
+			balance1 = Integer.valueOf(((String)rs.iterator().next().getVal()));
 			
-			result = rs.get(0);
-			balance2 = Integer.valueOf(((String)result.getVal()));
+			// Read balance2 from remote serverid
+			rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().read(gid, uid2)), gid, timestamp);
+			if (rs == null)
+				return null;
+			balance2 = Integer.valueOf(((String)rs.get(0).getVal()));
 		}
 		
-		
-		
-		
-		
-		
-		//Add error check if needed, just remove comment for following code and deal with the exception with outer function
-//		if(balance1 < amount){
-//			this.abort();
-//			throw new Exception("Not Enough Money, require " + amount + ", available " + balance);
-//		}
-		
-		balance1 -= amount;
-		balance2 += amount;
-		toApply.clear();
-		toApply.add(new Operation().write(gid, uid1, String.valueOf(balance1)));
-		
-		
-		
-		if(svr2 == null){
-			toApply.add(new Operation().write(gid, uid2, String.valueOf(balance2)));
-			
-			_scheduler.execute(toApply, gid, timestamp);
-		}else{
-			_scheduler.execute(toApply, gid, timestamp);
-			toApply.clear();
-			toApply.add(new Operation().write(gid, uid2, String.valueOf(balance2)));
-			svr2.remoteExecute(toApply, gid, timestamp);
+		/**
+		 * Calculate updated balances and write if there is enough money
+		 */
+		int updatedBalance1 = balance1 - amount;
+		int updatedBalance2 = balance2 + amount;
+		if (updatedBalance1 >= 0) {
+			if(uid2AccountOnSvr == null){				
+				// Update uid1 and uid2 on connected server (as accounts are both here)				
+				List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(updatedBalance1)), new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp);
+				if (rs == null)
+					return null;
+			}else{				
+				// Update uid1 on connected server and uid2 on remote server
+				List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(balance1))), gid, timestamp);
+				if (rs == null)
+					return null;
+				uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(balance2))), gid, timestamp);
+			}
 		}
 		
+		// Update the ProcessedTransaction state to precommit
+		for (ProcessedTransaction pt : _processedMultiSiteTxn) {
+			if (pt.getGid().equals(gid))
+				pt.setState(State.PRECOMMIT);				
+		}
 		
-		if(result == null)
-			return null;
-		else
-			return this.txnCheckingBalance(gid, uid1, timestamp);
+		// Return balance of account belonging to uid1
+		return txnCheckingBalance(gid, uid1, timestamp);
 	}
 
-	public void initNeighbour(List<ServerCommunicationInterface> neighbour){
-		this.neighbour_server = neighbour;
+	public void initNeighbours(List<ServerCommunicationInterface> neighbours){
+		neighbour_server = neighbours;
 	}
 	
 	public List<ResultSet> executeRemote(List<Operation> ops, String gid, long timestamp){
-		
 		return this._scheduler.execute(ops, gid, timestamp);
 	}
 
-	public boolean isExist(String tupleId){
+	public boolean exists(String tupleId) {
 		return this._scheduler.isInServer(tupleId);
 	}
-	
-
-
-
 }
