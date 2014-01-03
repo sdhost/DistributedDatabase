@@ -4,6 +4,7 @@ import java.awt.EventQueue;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 
+import javax.swing.DefaultListModel;
 import javax.swing.JFrame;
 import javax.swing.JList;
 import javax.swing.JLabel;
@@ -12,6 +13,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import javax.swing.AbstractListModel;
 
 public class ClientGUI {
 
@@ -19,7 +21,8 @@ public class ClientGUI {
 	private Client client;
 	private static String serverIp;
 	private static int serverPort;
-	private JTextArea txtOutput;
+	private static JTextArea txtOutput;
+	private JList list;
 	
 	/**
 	 * Launch the application.
@@ -70,7 +73,7 @@ public class ClientGUI {
 		log("Connected to server");
 	}
 	
-	public void log(String text) {
+	public static void log(String text) {
 		txtOutput.setText(txtOutput.getText() + "\n" + text);
 	}
 	
@@ -84,7 +87,8 @@ public class ClientGUI {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
 		
-		JList list = new JList();
+		list = new JList(new DefaultListModel<String>());
+		
 		list.setBounds(12, 31, 134, 173);
 		frame.getContentPane().add(list);
 		
@@ -93,6 +97,13 @@ public class ClientGUI {
 		frame.getContentPane().add(lblLocalAccounts);
 		
 		JButton butCheckBalance = new JButton("Check balance");
+		butCheckBalance.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				
+				
+				
+			}
+		});
 		butCheckBalance.setBounds(158, 68, 155, 25);
 		frame.getContentPane().add(butCheckBalance);
 		
@@ -121,7 +132,15 @@ public class ClientGUI {
 					 if (val == null || val.length() == 0)
 						 return;
 					 Integer initBalance = Integer.valueOf(val);
-					 client.txnCreatingAccounts(initBalance);
+					 String accountId = client.txnCreatingAccounts(initBalance);
+					 if (accountId != null) {
+						 
+						 
+						 
+						 DefaultListModel dlm = (DefaultListModel)getList().getModel();
+						 dlm.addElement(accountId);
+					 }
+					 
 				 } catch (Exception ex) {
 					 log(ex.toString());
 					 return;
@@ -131,5 +150,8 @@ public class ClientGUI {
 		});
 		butCreateAccount.setBounds(158, 31, 155, 25);
 		frame.getContentPane().add(butCreateAccount);
+	}
+	public JList getList() {
+		return list;
 	}
 }

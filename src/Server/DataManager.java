@@ -7,6 +7,10 @@ public class DataManager {
 	private volatile Log log;	
 	private volatile ConcurrentHashMap<String, String> TupleIdToValue; 	//In memory Database, Assume Only one table, a global unique key and a value column
 	
+	public DataManager() {
+		TupleIdToValue = new ConcurrentHashMap<String, String>(); 
+		log = new Log();
+	}
 	
 	/**
 	 * Read from in-memory map

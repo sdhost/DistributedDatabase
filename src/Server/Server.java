@@ -94,8 +94,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 	@Override
 	public State getTxnState(String gid) throws RemoteException {
-		ServerGUI.log("Called getTxnState");
-		return State.ONLINE;
+		if (txnStates.containsKey(gid))
+			return txnStates.get(gid); 
+		return State.NONEXIST;
 	}
 
 
@@ -138,16 +139,12 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	
 	@Override
 	public String txnCreatingAccounts(int balance) throws RemoteException {
-		
-		
 		String gid = this.txnCreation();
 		String uid = this.nextUid();
 		_tm.txnCreatingAccounts(balance, gid, uid, this.txnTime.get(gid));
-		//May add some error processing code here
+
 		this.txnStates.put(gid, State.FINISH);
 		this.txnResult.put(gid, uid);
-		
-		
 		return gid;
 	}
 

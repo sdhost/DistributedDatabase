@@ -2,10 +2,8 @@ package Client;
 
 import java.rmi.registry.*;
 import java.rmi.*;
-
 import Server.DataOperationInterface;
 import Server.State;
-import Server.TransactionManager;
 
 public class Client{
 	private Registry registry;
@@ -20,7 +18,7 @@ public class Client{
 		registry = LocateRegistry.getRegistry(serverAddress, serverPort);
 		rmiServer = (DataOperationInterface)(registry.lookup("rmiServer"));
 		
-		if(rmiServer.getServerState() == State.ONLINE){
+		if(rmiServer.getServerState() == State.ONLINE) {
 			initialized = true;
 			return true; // success
 		}else{
@@ -32,31 +30,25 @@ public class Client{
 	 * Inform server, to create new account
 	 * @return accountid or null in case of problems
 	 */
-	public Integer txnCreatingAccounts(int balance) throws RemoteException {
+	public String txnCreatingAccounts(int balance) throws RemoteException {
 		if (!initialized)
 			return null;
 		
 		String gid = rmiServer.txnCreatingAccounts(balance);
 		
-		
 		while(true){
 			State s = rmiServer.getTxnState(gid);
-			if( s == State.FINISH)
-				return (Integer)rmiServer.getTxnResult(gid);
-			else if(s == State.ERROR){
-				//TODO: do something about the error
-				//The serve could return more information about the error
-				Object err = rmiServer.getTxnResult(gid);
+			if( s == State.FINISH) {
+				return (String)rmiServer.getTxnResult(gid);
+			} else if(s == State.ERROR) {
+				ClientGUI.log(rmiServer.getTxnResult(gid).toString());
 				return null;
-			}else{
-				//Still processing
-				continue;
 			}
+			
+			try {
+				Thread.sleep(100);	
+			} catch (InterruptedException ex) {}
 		}
-		
-		
-		
-		
 	}
 	
 	/**
