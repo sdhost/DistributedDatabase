@@ -52,29 +52,7 @@ public class Scheduler {
 				Thread.sleep(500);	
 			}  catch (InterruptedException ex) {}
 		}
-		
-		
-		/**
-		// Check messages
-		for (Entry<String, String> e : _lockmanager.getMessages(gid).entrySet()) {
-			if (e.getValue().toLowerCase().contains("waiting for other transactions finish")) {
-				// TODO?
-			} else if (e.getValue().toLowerCase().contains("need to abort")) {
-				
-				// We must abort a transaction
-				_datamanager.Abort(e.getKey());
-				
-				// TODO?
-			} else if (e.getValue().toLowerCase().contains("no lock request exist for this transaction")) {
-				// TODO?				
-			} else if (e.getValue().toLowerCase().contains("call prepareLocking to initialize the timestamp first")) {
-				// Should never happen. Indicative of programming bug.
-				ServerGUI.log("Software bug found!");
-			} else {
-				ServerGUI.log("Uncatched message: " + e.getValue() + " for GID: " + e.getKey());
-			}
-		}
-		*/
+
 		return rs;
 	}
 	
@@ -119,14 +97,12 @@ public class Scheduler {
 		return _datamanager.exist(tupleID);
 	}
 
-	public void abort(String gid) {
-		this._datamanager.Abort(gid);
+	public void abort(String gid) throws Exception {
+		_datamanager.Abort(gid);
 		
 	}
 	
 	public void commit(String gid){
-		this._datamanager.Commit(gid);
+		_datamanager.Commit(gid);
 	}
-	
-	
 }

@@ -1,22 +1,21 @@
 package Server;
 
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Maintains log of all operations
+ */
 public class Log {
-
-	private volatile int serialID = 0;
-	private int lastCommit = -1;
+	private volatile ConcurrentHashMap<Integer, String> _rawLog; //Map<serialID, LogContent>
+	private volatile int _serialID = 0;
+	//private int _lastCommit = -1;
 	
-	private volatile ConcurrentHashMap<Integer, String> rawLog; //Map<serialID, LogContent>
-	
-	public Log(){
-		
+	public Log() {
+		_rawLog = new ConcurrentHashMap<Integer, String>();
 	}
 	
-	public void newlog(String gid, String tupleID, String oldValue, String newValue) {
-		
+	public void newEntry(String gid, String tupleID, String oldValue, String newValue) {
 		if(oldValue == null)
 			oldValue = "Null";
 		if(newValue == null)
@@ -26,33 +25,35 @@ public class Log {
 						 tupleID + "\t" +
 						 oldValue + "\t" +
 						 newValue + "\t";
-		this.rawLog.put(serialID, logline);
-		this.serialID += 1;
-		
+		_rawLog.put(_serialID++, logline);
 	}
 	
-	public void Commit(int gid){
-		this.rawLog.put(serialID, String.valueOf(gid) + "Commit");
-		this.lastCommit = this.serialID;
-		this.serialID += 1;
+	public void Commit(String gid) {
+		_rawLog.put(_serialID, String.valueOf(gid) + "\tCommit");
+		//_lastCommit = _serialID;
+		_serialID++;
 	}
 	
-	public LinkedList<String> Abort(String gid){
-		this.rawLog.put(serialID, String.valueOf(gid) + "\tAbort");
+	/**
+	 * TODO: DEBUG TO ENSURE IT IS CORRECT
+	 */
+	public LinkedList<String> Abort(String gid) {
+		_rawLog.put(_serialID++, String.valueOf(gid) + "\tAbort");
 		LinkedList<String> undoList = new LinkedList<String>();
 		
-		for(int i = serialID -1; i >= 0 ;i--){
-			undoList.push(this.rawLog.get(i));
-			if(this.rawLog.get(i).contentEquals(String.valueOf(gid) + "\tBegin"));
+		for (int i = _serialID -1; i >= 0; i--) {
+			undoList.push(_rawLog.get(i));
+			
+			if(_rawLog.get(i).equals(String.valueOf(gid) + "\tBegin"))
 				break;
 		}
 		
+		// UndoList should be list{<gid\t tupleID\t oldValue\t newValue\t}
 		return undoList;
 	}
 	
-	public void newTransaction(int gid){
-		this.rawLog.put(serialID, String.valueOf(gid) + "\tBegin");
-		this.serialID += 1;
+	public void newTransaction(String gid) {
+		_rawLog.put(_serialID++, String.valueOf(gid) + "\tBegin");
 	}
 
 }
