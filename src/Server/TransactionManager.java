@@ -15,23 +15,28 @@ public class TransactionManager implements Serializable {
 	private CommitCoordinator _2PC;	
 	private Scheduler _scheduler;
 	private Thread _2PCThread;
+	private int serverId;
 	
 	// Contain list of all txn, that is being 2PC coordinated by this server
-	public ConcurrentLinkedQueue<String> _coordinatorTxn;
+	public ConcurrentLinkedQueue<ProcessedTransaction> _coordinatorTxn;
+	
+	// Contain coordinator id of each participant txn on this server.
+	public ConcurrentHashMap<String, Integer> _participantTxn;
 	
 	// Contains? (somebody add info!)
 	public ConcurrentLinkedQueue<ProcessedTransaction> _processedMultiSiteTxn;
 	
 	// Contains? (somebody add info!) 
-	public volatile ConcurrentHashMap<String, ArrayList<Integer>> _initiatedTxn = new ConcurrentHashMap<String, ArrayList<Integer>>();
+	public ConcurrentHashMap<String, ArrayList<Integer>> _initiatedTxn = new ConcurrentHashMap<String, ArrayList<Integer>>();
 	
 	
-	public TransactionManager() throws IOException {
+	public TransactionManager(int serverId) throws IOException {
+		this.serverId = serverId;
 		_scheduler = new Scheduler(this);
 		_2PC = new CommitCoordinator(this);
-		_coordinatorTxn = new ConcurrentLinkedQueue<String>();
+		_coordinatorTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
 		_processedMultiSiteTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
-		
+		_participantTxn = new ConcurrentHashMap<String, Integer>();
 		_2PCThread = new Thread(_2PC);
 		_2PCThread.start();
 	}
@@ -133,7 +138,6 @@ public class TransactionManager implements Serializable {
 		 * This transaction is spanning multiple servers, and should be coordinated by 2PC
 		 * This server assumes the responsibility as a 2PC coordinator
 		 */
-		_coordinatorTxn.add(gid);
 		
 		
 		/**
@@ -182,7 +186,7 @@ public class TransactionManager implements Serializable {
 			balance1 = Integer.valueOf(((String)rs.iterator().next().getVal()));
 			
 			// Read balance2 from remote serverid
-			rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().read(gid, uid2)), gid, timestamp);
+			rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().read(gid, uid2)), gid, timestamp, serverId);
 			if (rs == null)
 				return null;
 			balance2 = Integer.valueOf(((String)rs.get(0).getVal()));
@@ -204,14 +208,17 @@ public class TransactionManager implements Serializable {
 				List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(balance1))), gid, timestamp);
 				if (rs == null)
 					return null;
-				uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(balance2))), gid, timestamp);
+				uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(balance2))), gid, timestamp, serverId);
 			}
 		}
 		
 		// Update the ProcessedTransaction state to precommit
 		for (ProcessedTransaction pt : _processedMultiSiteTxn) {
 			if (pt.getGid().equals(gid))
-				pt.setState(State.PRECOMMIT);				
+				pt.setState(State.PRECOMMIT);
+			if(_initiatedTxn.contains(gid)){
+				_coordinatorTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
+			}
 		}
 		
 		// Return balance of account belonging to uid1
@@ -222,7 +229,8 @@ public class TransactionManager implements Serializable {
 		neighbour_server = neighbours;
 	}
 	
-	public List<ResultSet> executeRemote(List<Operation> ops, String gid, long timestamp){
+	public List<ResultSet> executeRemote(List<Operation> ops, String gid, long timestamp, int sid){
+		_participantTxn.put(gid, sid);
 		return this._scheduler.execute(ops, gid, timestamp);
 	}
 

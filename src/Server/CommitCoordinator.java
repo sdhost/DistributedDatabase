@@ -15,8 +15,10 @@ public class CommitCoordinator implements Runnable{
 	public Registry registry;
 	public ServerCommunicationInterface rmiServer;
 	public Configuration conf;
+	//TODO: initialize the following parameters
 	public ConcurrentLinkedQueue<ProcessedTransaction> coordinatingTxn;
 	public ConcurrentHashMap<String, ArrayList<Integer>> initiatedTxn;
+	public MultiTxnState multiTxnState;
 	public TransactionManager tm;
 	public long waitTime = 1500;
 	
@@ -43,7 +45,9 @@ public class CommitCoordinator implements Runnable{
 						
 							ProcessedTransaction txn = coordinatingTxn.poll();
 							String gid = txn.getGid();
-							//TODO:write prepare message to log
+							//TODO: add start log in transaction manager
+							//write prepare message to log
+							multiTxnState.getUnfinishedTxn().put(gid, State.TPCPREPARE);
 							State decision = State.EMPTY;
 							//initialized a vote pool to store the vote results
 							ArrayList<State> votePool = new ArrayList<State>();
@@ -59,15 +63,15 @@ public class CommitCoordinator implements Runnable{
 											rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
 												//if the participant failed, assume it returned abort
 												State vote = rmiServer.replyVote(gid);
-												if(vote == State.OFFLINE){
+												if(vote == null){
 													vote = State.PREABORT;
 												}
-												if(vote == State.TPCWAIT || vote == null){
+												if(vote == State.TPCWAIT){
 													Thread.sleep(500);
 												}
 												
 												vote = rmiServer.replyVote(gid);
-												if(vote == State.OFFLINE || vote == State.TPCWAIT){
+												if(vote == null || vote == State.TPCWAIT){
 													vote = State.PREABORT;
 												}
 												
@@ -87,12 +91,13 @@ public class CommitCoordinator implements Runnable{
 								}
 								
 								if(decision == State.TPCABORT){
-									//TODO: write abort into log
+									// write abort into log
+									multiTxnState.getUnfinishedTxn().put(gid, State.TPCABORT);
 									
 								}
 								else if(decision == State.TPCCOMMIT){
-									//TODO: write commit into log
-							
+									//write commit into log
+									multiTxnState.getUnfinishedTxn().put(gid, State.TPCCOMMIT);
 								}
 								
 								//announce other participants about the vote result
@@ -117,16 +122,19 @@ public class CommitCoordinator implements Runnable{
 								if(ackList.size() == initiatedTxn.get(gid).size()){
 									if(decision == State.TPCCOMMIT){
 										tm.commit(gid);
-										//TODO:write end of transaction into log
+										//write end of transaction into log
+										multiTxnState.unfinishedTxn.remove(gid);
+										multiTxnState.finishedTxn.put(gid, State.TPCFINISHCOMMIT);
 									}
 									else if(decision == State.TPCABORT){
 										try {
 											tm.abort(gid);
 										} catch (Exception e) {
-											// TODO Auto-generated catch block
 											e.printStackTrace();
 										}
-										//TODO:write end of transaction into log
+										//write end of transaction into log
+										multiTxnState.unfinishedTxn.remove(gid);
+										multiTxnState.finishedTxn.put(gid, State.TPCFINISHABORT);
 									}
 								}else{
 									//this won't happen

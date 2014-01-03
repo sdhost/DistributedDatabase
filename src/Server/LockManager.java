@@ -116,6 +116,9 @@ public class LockManager {
 				
 				for(String txn:abortTxn){
 					_tm._processedMultiSiteTxn.add(new ProcessedTransaction(txn,State.PREABORT));
+					if(_tm._initiatedTxn.contains(txn)){
+						_tm._coordinatorTxn.add(new ProcessedTransaction(txn, State.PREABORT));
+					}
 					_dm.Abort(txn);
 					this.release(txn);
 					//String mess = "O\tNeed to Abort";

@@ -17,7 +17,10 @@ public enum State {
 			//State 4 ~ 10 for 2PC state
 	FINISH(11),
 	ERROR(12),
-	PROCESSING(13);
+	PROCESSING(13),
+
+	TPCFINISHCOMMIT(14),
+	TPCFINISHABORT(15);
 			//State 10 ~ 12 for transaction execution state
 	public int value;
 	

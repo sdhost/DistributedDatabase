@@ -24,6 +24,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	private int shift = 4;
 	private TransactionManager _tm;
 	private List<ServerCommunicationInterface> neighbour_server;
+
 	
 	//For each new account in system, the primary key uid for it will be generated as
 	// uid = uniqueServerId * 10^shift + serialId
@@ -35,7 +36,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	private Map<Integer, State> heartbeatStates;
 	public volatile int a = 999;
 	public HeartMonitor heartMonitor;
-	
+	public MultiTxnState multiTxnState;
 	
 	protected Server(String ip, int port, int serverId) throws IOException {
 		super();
@@ -52,13 +53,15 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         serverState = State.ONLINE;
         uniqueServerId = serverId;
         
-        _tm = new TransactionManager();
+        _tm = new TransactionManager(uniqueServerId);
         
         //Make sure the uid will be valid
         this.txnStates = new ConcurrentHashMap<String,State>();
         this.txnResult = new ConcurrentHashMap<String, String>();
         this.txnTime = new ConcurrentHashMap<String,Long>();
         this.heartbeatStates = new HashMap<Integer, State>();
+        //TODO: pass this parameter to commit coordinator, heart beat monitor.
+        this.multiTxnState = new MultiTxnState();
         heartMonitor = new HeartMonitor(this.heartbeatStates, serverId);
         Thread heartThread = new Thread(heartMonitor);
         heartThread.start();
@@ -225,11 +228,11 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	public State heartBeat() throws RemoteException {
 		return this.serverState;
 	}
-	
+	//TODO: write start log for participant txn.
 	@Override
 	public State replyVote(String gid){
 		if(serverState == State.OFFLINE)
-			return State.OFFLINE;
+			return null;
 		
 		ProcessedTransaction targetTxn = null;
 		Iterator<ProcessedTransaction> it = _tm._processedMultiSiteTxn.iterator();
@@ -240,18 +243,16 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		}
 		
 		if(targetTxn == null){
-
-			//TODO: write abort into log
-			//TODO:abort this transaction
 			return State.TPCWAIT;
 		}
 		else{
 			if(targetTxn.getState() == State.PREABORT){
-				//TODO: write abort into log
-				//TODO:abort this transaction
+				//write PREabort into log
+				multiTxnState.unfinishedTxn.put(gid, State.PREABORT);
 			}
 			if(targetTxn.getState() == State.PRECOMMIT){
-				//TODO: write ready into log
+				// write PREcommit into log
+				multiTxnState.unfinishedTxn.put(gid, State.PRECOMMIT);
 			}
 			return targetTxn.getState();
 		}
@@ -262,16 +263,21 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	@Override
 	public String proceedVoteDecision(String gid, State decision){
 		if(serverState == State.OFFLINE)
-			return gid;
+			return null;
 		if(decision == State.TPCCOMMIT){
-			//TODO: write commit into log
+			//write commit into log
+			multiTxnState.unfinishedTxn.put(gid, State.TPCCOMMIT);
 			_tm.commit(gid);
+			multiTxnState.unfinishedTxn.remove(gid);
+			multiTxnState.finishedTxn.put(gid, State.FINISH);
 		}else if(decision == State.TPCABORT){
-			//TODO: write abort into log
+			//write abort into log
 			try {
+				multiTxnState.unfinishedTxn.put(gid, State.TPCABORT);
 				_tm.abort(gid);
+				multiTxnState.unfinishedTxn.remove(gid);
+				multiTxnState.finishedTxn.put(gid, State.FINISH);
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -304,8 +310,8 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	}
 
 	@Override
-	public List<ResultSet> remoteExecute(List<Operation> ops, String gid, long timestamp) throws RemoteException {
-		return this._tm.executeRemote(ops, gid, timestamp);
+	public List<ResultSet> remoteExecute(List<Operation> ops, String gid, long timestamp, int sid) throws RemoteException {
+		return this._tm.executeRemote(ops, gid, timestamp, sid);
 		
 	}
 
