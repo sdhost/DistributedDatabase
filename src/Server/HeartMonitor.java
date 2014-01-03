@@ -17,11 +17,13 @@ public class HeartMonitor implements Runnable{
 	public Registry registry;
 	public ServerCommunicationInterface rmiServer;
 	public Configuration conf;
+	public Server server;
 	
-	public HeartMonitor(Map<Integer, State> heartbeatStates, int serverId) throws IOException{
-		this.heartbeatStates = heartbeatStates;
+	public HeartMonitor(Server s) throws IOException{
+		this.server = s;
+		this.heartbeatStates = s.heartbeatStates;
 		this.conf= Configuration.fromFile("conf.txt");
-		this.serverId = serverId;
+		this.serverId = s.getServerID();
 		//initialize each server to be off line
 		for(Entry<Integer, String> e : conf.getAllServers().entrySet()){
 			if(e.getKey() != this.serverId){
@@ -54,11 +56,24 @@ public class HeartMonitor implements Runnable{
 										rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
 
 										State objState = rmiServer.heartBeat();
-										if(objState.equals(  State.OFFLINE))
-													heartbeatStates.put(id, State.OFFLINE);
-										else
-													heartbeatStates.put(id, State.ONLINE);
-												
+										if(objState.equals(  State.OFFLINE)){
+											heartbeatStates.put(id, State.OFFLINE);
+											
+											//TODO:abort the transaction that coordinated by the failed server
+											for(Entry<String, Integer> txn: server.get_tm()._participantTxn.entrySet()){
+												if(txn.getValue() == id){
+													server.multiTxnState.unfinishedTxn.remove(txn.getKey());
+													server.multiTxnState.finishedTxn.put(txn.getKey(), State.TPCABORT);
+													try {
+														server.get_tm().abort(txn.getKey());
+													} catch (Exception e1) {
+														e1.printStackTrace();
+													}
+												}
+											}
+										}else{
+												heartbeatStates.put(id, State.ONLINE);
+										}
 									} catch (RemoteException | NotBoundException e1) {
 												//System.out.println(e1.getMessage());
 												continue;

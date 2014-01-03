@@ -124,7 +124,7 @@ public class CommitCoordinator implements Runnable{
 										tm.commit(gid);
 										//write end of transaction into log
 										multiTxnState.unfinishedTxn.remove(gid);
-										multiTxnState.finishedTxn.put(gid, State.TPCFINISHCOMMIT);
+										multiTxnState.finishedTxn.put(gid, State.FINISH);
 									}
 									else if(decision == State.TPCABORT){
 										try {
@@ -134,7 +134,7 @@ public class CommitCoordinator implements Runnable{
 										}
 										//write end of transaction into log
 										multiTxnState.unfinishedTxn.remove(gid);
-										multiTxnState.finishedTxn.put(gid, State.TPCFINISHABORT);
+										multiTxnState.finishedTxn.put(gid, State.FINISH);
 									}
 								}else{
 									//this won't happen

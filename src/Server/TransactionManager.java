@@ -19,16 +19,16 @@ public class TransactionManager implements Serializable {
 	private int serverId;
 	public MultiTxnState multiTxnState;
 	
-	// Contain list of all txn, that is being 2PC coordinated by this server
+	// Contain list of all txn, that are being 2PC coordinated by this server
 	public ConcurrentLinkedQueue<ProcessedTransaction> _coordinatorTxn;
 	
-	// Contain coordinator id of each participant txn on this server.
+	// Contain coordinator id of each participant transfer txn on this server.
 	public ConcurrentHashMap<String, Integer> _participantTxn;
 	
-	// Contains? (somebody add info!)
+	// Contains states of the transfer txns.
 	public ConcurrentLinkedQueue<ProcessedTransaction> _processedMultiSiteTxn;
 	
-	// Contains? (somebody add info!) 
+	// Contains participant server is, which are involved in the transfer txn initiated on this server 
 	public ConcurrentHashMap<String, ArrayList<Integer>> _initiatedTxn = new ConcurrentHashMap<String, ArrayList<Integer>>();
 	
 	
