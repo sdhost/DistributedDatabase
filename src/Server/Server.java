@@ -52,8 +52,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         
         serverState = State.ONLINE;
         uniqueServerId = serverId;
+        this.multiTxnState = new MultiTxnState();
         
-        _tm = new TransactionManager(uniqueServerId);
+        _tm = new TransactionManager(uniqueServerId, multiTxnState);
         
         //Make sure the uid will be valid
         this.txnStates = new ConcurrentHashMap<String,State>();
@@ -61,7 +62,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         this.txnTime = new ConcurrentHashMap<String,Long>();
         this.heartbeatStates = new HashMap<Integer, State>();
         //TODO: pass this parameter to commit coordinator, heart beat monitor.
-        this.multiTxnState = new MultiTxnState();
+        
         heartMonitor = new HeartMonitor(this.heartbeatStates, serverId);
         Thread heartThread = new Thread(heartMonitor);
         heartThread.start();

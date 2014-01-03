@@ -16,6 +16,7 @@ public class TransactionManager implements Serializable {
 	private Scheduler _scheduler;
 	private Thread _2PCThread;
 	private int serverId;
+	public MultiTxnState multiTxnState;
 	
 	// Contain list of all txn, that is being 2PC coordinated by this server
 	public ConcurrentLinkedQueue<ProcessedTransaction> _coordinatorTxn;
@@ -30,7 +31,8 @@ public class TransactionManager implements Serializable {
 	public ConcurrentHashMap<String, ArrayList<Integer>> _initiatedTxn = new ConcurrentHashMap<String, ArrayList<Integer>>();
 	
 	
-	public TransactionManager(int serverId) throws IOException {
+	public TransactionManager(int serverId, MultiTxnState multiTxnState) throws IOException {
+		this.multiTxnState = multiTxnState;
 		this.serverId = serverId;
 		_scheduler = new Scheduler(this);
 		_2PC = new CommitCoordinator(this);
