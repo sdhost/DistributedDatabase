@@ -15,7 +15,6 @@ public class CommitCoordinator implements Runnable{
 	public Registry registry;
 	public ServerCommunicationInterface rmiServer;
 	public Configuration conf;
-	//TODO: initialize the following parameters
 	public ConcurrentLinkedQueue<ProcessedTransaction> coordinatingTxn;
 	public ConcurrentHashMap<String, ArrayList<Integer>> initiatedTxn;
 	public MultiTxnState multiTxnState;
@@ -33,7 +32,6 @@ public class CommitCoordinator implements Runnable{
 	@Override
 	public void run(){
 		
-		//TODO: used coordinatinMultiTxn instead of processedTxn;
 		while(true){
 			if(coordinatingTxn.size() == 0){
 				try {

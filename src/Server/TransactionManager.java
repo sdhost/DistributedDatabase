@@ -141,6 +141,8 @@ public class TransactionManager implements Serializable {
 		 * This server assumes the responsibility as a 2PC coordinator
 		 */
 		
+		//record the start log of this transaction
+		multiTxnState.unfinishedTxn.put(gid, State.TPCSTART);
 		
 		/**
 		 * Check if uid2 exists on any of the connected servers (including the currently connected one)
@@ -233,6 +235,8 @@ public class TransactionManager implements Serializable {
 	
 	public List<ResultSet> executeRemote(List<Operation> ops, String gid, long timestamp, int sid){
 		_participantTxn.put(gid, sid);
+		//record the start log of this transaction
+		multiTxnState.unfinishedTxn.put(gid, State.TPCSTART);
 		return this._scheduler.execute(ops, gid, timestamp);
 	}
 
