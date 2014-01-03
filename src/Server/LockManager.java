@@ -44,7 +44,7 @@ public class LockManager {
 	// into the list. Otherwise put in the waiting queue.
 	// Return false if the lock were succeed granted, otherwise return true
 	// If error exist, call getError(gid, tupleId) for further information
-	public boolean lock(String gid, String tupleId, Boolean type){
+	public boolean lock(String gid, String tupleId, Boolean type) throws Exception{
 		if(!this.txnTime.containsKey(gid)){
 //			Map<String,String> newError = new HashMap<String,String>();
 //			String mess = "E\tCall prepareLocking to initialize the timestamp first";
