@@ -1,30 +1,29 @@
 package Server;
 
+/**
+ * Class used to maintain the state of a transaction
+ */
 public class ResultSet {
-	String type;
-	Object val;
+	private String _type = null;
+	private Object _val;
 	
-	public ResultSet(Object o){
-		if(o == null)
-			this.type = null;
-		else
-			this.type = o.getClass().getName();
-		this.val = o;
-		
+	public ResultSet(Object o) {
+		_val = o;
+		if (o != null)
+			_type = o.getClass().getName();		
 	}
 	
+	/**
+	 * @return Class of object or null
+	 */
 	public String getType() {
-		return type;
+		return _type;
 	}
 	
+	/**
+	 * @return Object containing value
+	 */
 	public Object getVal() {
-		return val;
+		return _val;
 	}
-	
-	public State isSuccess(){
-		if( !(this.type == null))
-			return State.PRECOMMIT;
-		else return State.PREABORT;
-	}
-	
 }

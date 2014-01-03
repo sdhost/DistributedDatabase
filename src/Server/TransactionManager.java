@@ -6,26 +6,27 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class TransactionManager implements Serializable{
-
+public class TransactionManager implements Serializable {
+	private Thread _2PCThread;
 	private Scheduler _scheduler;
-	private CommitCoordinator _2PC;
-	
+	private CommitCoordinator _2PC;	
 	private List<ServerCommunicationInterface> neighbour_server;
+	public ConcurrentLinkedQueue<ProcessedTransaction> _processedMultiSiteTxn;
 	
-	
-	public ConcurrentLinkedQueue<ProcessedTransaction> _processedTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
 	
 	//TODO: Kaiji: if a transaction that involves multiple servers is initiated in the local TM,
 	//the local TM will put the server IDs of other involved Servers into _initiatedTxn(except for local server id), where the key is gid.
-	public volatile HashMap<String, ArrayList<Integer>> _initiatedTxn = new HashMap<String, ArrayList<Integer>>();
+	public volatile ConcurrentHashMap<String, ArrayList<Integer>> _initiatedTxn = new ConcurrentHashMap<String, ArrayList<Integer>>();
 	
 	public TransactionManager() throws IOException {
 		_scheduler = new Scheduler(this);
 		_2PC = new CommitCoordinator(this);
-		Thread _2PCThread = new Thread(_2PC);
+		_processedMultiSiteTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
+		
+		_2PCThread = new Thread(_2PC);
 		_2PCThread.start();
 	}
 	
@@ -36,8 +37,13 @@ public class TransactionManager implements Serializable{
 		toApply.add(new Operation().write(gid, uid, String.valueOf(balance)));
 
 		// Send to scheduler
-		_scheduler.execute(toApply, gid, timestamp);
+		if (_scheduler.execute(toApply, gid, timestamp) != null) {
+			// SUCCES
+		} else {
+			// PROBLEM
+		}
 		
+		// What to return?
 		return null;
 	}
 	
@@ -47,12 +53,6 @@ public class TransactionManager implements Serializable{
 		
 	}
 	
-	public void finish(String gid, ResultSet result) {
-		
-		ProcessedTransaction pt = new ProcessedTransaction(gid, result.isSuccess());
-		
-	}
-
 	public String txnCheckingBalance(String gid, String uid, Long timestamp) {
 		// Create list of operations to apply
 		List<Operation> toApply = new ArrayList<Operation>();

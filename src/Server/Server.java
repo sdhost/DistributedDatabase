@@ -230,7 +230,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	@Override
 	public State replyVote(String gid){
 		ProcessedTransaction targetTxn = null;
-		Iterator<ProcessedTransaction> it = _tm._processedTxn.iterator();
+		Iterator<ProcessedTransaction> it = _tm._processedMultiSiteTxn.iterator();
 		while(it.hasNext()){
 			ProcessedTransaction txn = it.next();
 			if(txn.getGid() == gid)
@@ -244,7 +244,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			}
 		}
 		
-		it = _tm._processedTxn.iterator();
+		it = _tm._processedMultiSiteTxn.iterator();
 		while(it.hasNext()){
 			ProcessedTransaction txn = it.next();
 			if(txn.getGid() == gid)
@@ -280,14 +280,14 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			_tm.abort(gid);
 		}
 		ProcessedTransaction targetTxn = null;
-		Iterator<ProcessedTransaction> it = _tm._processedTxn.iterator();
+		Iterator<ProcessedTransaction> it = _tm._processedMultiSiteTxn.iterator();
 		while(it.hasNext()){
 			ProcessedTransaction txn = it.next();
 			if(txn.getGid() == gid)
 				targetTxn = txn;
 		}
 		if(targetTxn != null)
-			_tm._processedTxn.remove(targetTxn);
+			_tm._processedMultiSiteTxn.remove(targetTxn);
 		return gid;
 	}
 	

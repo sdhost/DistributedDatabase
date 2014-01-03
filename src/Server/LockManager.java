@@ -109,7 +109,7 @@ public class LockManager {
 					newError = new HashMap<String,String>();
 				
 				for(String txn:abortTxn){
-					_tm._processedTxn.add(new ProcessedTransaction(txn,State.PREABORT));
+					_tm._processedMultiSiteTxn.add(new ProcessedTransaction(txn,State.PREABORT));
 					oldLock.remove(txn);
 					String mess = "O\tNeed to Abort";
 					newError.put(txn, mess);

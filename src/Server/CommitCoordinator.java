@@ -8,6 +8,7 @@ import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class CommitCoordinator implements Runnable{
@@ -15,14 +16,14 @@ public class CommitCoordinator implements Runnable{
 	public ServerCommunicationInterface rmiServer;
 	public Configuration conf;
 	public ConcurrentLinkedQueue<ProcessedTransaction> processedTxn;
-	public HashMap<String, ArrayList<Integer>> initiatedTxn;
+	public ConcurrentHashMap<String, ArrayList<Integer>> initiatedTxn;
 	public TransactionManager tm;
 	public long waitTime = 1500;
 	
 	public CommitCoordinator(TransactionManager _tm) throws IOException{
 		this.conf= Configuration.fromFile("conf.txt");
 		this.tm = _tm;
-		this.processedTxn = _tm._processedTxn;
+		this.processedTxn = _tm._processedMultiSiteTxn;
 		this.initiatedTxn = _tm._initiatedTxn;
 	}
 	
