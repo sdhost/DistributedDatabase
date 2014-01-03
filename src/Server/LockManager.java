@@ -134,7 +134,7 @@ public class LockManager {
 				this.tupleLocks.get(tupleId).put(gid, type);
 				//this.message.put(gid, newError);
 				return false;
-			}else{//All share locks
+			}else{//All share locks or Upgrade from share to exclusive lock
 				this.tupleLocks.get(tupleId).put(gid, type);
 				return false;
 			}

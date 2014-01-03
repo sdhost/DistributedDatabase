@@ -213,8 +213,10 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		String gid = this.txnCreation();
 		String balance = _tm.txnTransfer(gid,uid1,uid2,amount, this.txnTime.get(gid));
 		
-
-		this.txnStates.put(gid, State.FINISH);
+		if(balance == null)
+			this.txnStates.put(gid, State.ERROR);
+		else
+			this.txnStates.put(gid, State.FINISH);
 		this.txnResult.put(gid, balance);
 		
 		return gid;
