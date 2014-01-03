@@ -248,7 +248,10 @@ public class TransactionManager implements Serializable {
 		/**
 		 * Read balance1 and 2 (from uid1 and uid2)
 		 */
-		int balance1, balance2;		
+		int balance1, balance2;
+		int updatedBalance1 = 0;
+		int updatedBalance2 = 0;
+		boolean error = false;
 		if(uid2AccountOnSvr == null) {
 			// Read balance1 and balance2 from current connected server
 			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid1), new Operation().read(gid, uid2)), gid, timestamp);
@@ -262,91 +265,99 @@ public class TransactionManager implements Serializable {
 			
 			balance1 = Integer.valueOf(((String)rs.get(0).getVal()));
 			balance2 = Integer.valueOf(((String)rs.get(1).getVal()));
+			updatedBalance1 = balance1 - amount;
+			updatedBalance2 = balance2 - amount;
+			
+			rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(updatedBalance1)), new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp);
+			if (rs == null) {
+				modalPopup(gid, StepMessages.PREABORT.value);
+				try {_scheduler.abort(gid);} catch (Exception e) {}
+				modalPopup(gid, StepMessages.ABORTED.value);
+				ServerGUI.log("Problem with writing updated balance");
+				return null;
+			}
+			
+			this._scheduler.commit(gid);
+			// Return balance of account belonging to uid1
+			return String.valueOf(updatedBalance1);
 		}else{
 			
 			// Store gid -> remote serverid
 			_initiatedTxn.put(gid, new ArrayList<Integer>(Arrays.asList(uid2AccountOnSvr.getServerID())));
 			
-			// Read balance1 from current connected server and balance2 from connected server
-			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid1)), gid, timestamp);
-			if (rs == null) {
-				modalPopup(gid, StepMessages.PREABORT.value);
-				try {_scheduler.abort(gid);} catch (Exception e) {}
-				modalPopup(gid, StepMessages.ABORTED.value);
-				ServerGUI.log("Problem with checking balance");
-				this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
-				return null;
-			}
 			
-			balance1 = Integer.valueOf(((String)rs.iterator().next().getVal()));
 			
 			// Read balance2 from remote serverid
-			rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().read(gid, uid2)), gid, timestamp, serverId);
+			List<ResultSet> rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().read(gid, uid2)), gid, timestamp, serverId);
 			if (rs == null) {
 				modalPopup(gid, StepMessages.PREABORT.value);
-				try {_scheduler.abort(gid);} catch (Exception e) {}
-				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with checking balance");
-				
-				// TODO: Set status to PREABORT
-				
-			}	
-			balance2 = Integer.valueOf(((String)rs.get(0).getVal()));
-		}
-		
-		modalPopup(gid, "Read balances");
-		
-		/**
-		 * Calculate updated balances
-		 */
-		int updatedBalance1 = balance1 - amount;
-		int updatedBalance2 = balance2 + amount;
-		if(uid2AccountOnSvr == null){				
-			// Update uid1 and uid2 on connected server (as accounts are both here)				
-			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(updatedBalance1)), new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp);
-			if (rs == null) {
-				modalPopup(gid, StepMessages.PREABORT.value);
-				try {_scheduler.abort(gid);} catch (Exception e) {}
-				modalPopup(gid, StepMessages.ABORTED.value);
-				ServerGUI.log("Problem with writing updated balance");
-				return null;
+			}else{
+			
+				balance2 = Integer.valueOf(((String)rs.get(0).getVal()));
+				//Update balance2
+				updatedBalance2 = balance2 - amount;
+				//Write to balance2
+				rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp, serverId);	
+				if (rs == null) {
+					modalPopup(gid, StepMessages.PREABORT.value);
+					try {_scheduler.abort(gid);} catch (Exception e) {}
+					modalPopup(gid, StepMessages.ABORTED.value);
+					ServerGUI.log("Problem with writing updated balance");
+				}else{
+					//Set precommit in remote server
+					uid2AccountOnSvr.remoteExecute(new ArrayList<Operation>(), gid, timestamp, serverId);
+				}
 			}
-				
-		}else{
 			
-			modalPopup(gid, "Read local");
-			
-			// Update uid1 on connected server and uid2 on remote server
-			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(updatedBalance1))), gid, timestamp);
+			// Read balance1 from current connected server and balance2 from connected server
+			 rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid1)), gid, timestamp);
 			if (rs == null) {
 				modalPopup(gid, StepMessages.PREABORT.value);
-				try {_scheduler.abort(gid);} catch (Exception e) {}
-				modalPopup(gid, StepMessages.ABORTED.value);
-				ServerGUI.log("Problem with writing updated balance");
+				ServerGUI.log("Problem with checking balance");
 				this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
-				// TODO: Set status to PREABORT
-				
-				return null;
+				error = true;
+			}else{
+				balance1 = Integer.valueOf(((String)rs.iterator().next().getVal()));
+				//Update balance 1
+				updatedBalance1 = balance1 - amount;
+				//Write to balance1
+				rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(updatedBalance1))), gid, timestamp);
+				if (rs == null) {
+					modalPopup(gid, StepMessages.PREABORT.value);
+					ServerGUI.log("Problem with writing updated balance");
+					this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
+				}else{
+					this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
+				}
 			}
 			
-			modalPopup(gid, "Read remote");
-			rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp, serverId);	
-			if (rs == null) {
-				modalPopup(gid, StepMessages.PREABORT.value);
-				try {_scheduler.abort(gid);} catch (Exception e) {}
-				modalPopup(gid, StepMessages.ABORTED.value);
-				ServerGUI.log("Problem with writing updated balance");
-				return null;
+			//update coordinator txn state
+			for(ProcessedTransaction txn: this._processedMultiSiteTxn){
+				if(txn.getGid() == gid){
+					this._coordinatorTxn.add(new ProcessedTransaction(gid, txn.getState()));
+					break;
+				}
 			}
 			
+			//detect if transaction is finished
+			boolean finished;
+			do{
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				finished = this.multiTxnState.finishedTxn.containsKey(gid);
+			}
+			while(finished == false);
 			
+			// Return balance of account belonging to uid1
+			return String.valueOf(updatedBalance1);
 		}
 		
 		
 		
-		
-		// Return balance of account belonging to uid1
-		return String.valueOf(updatedBalance1);
 	}
 
 	public void initNeighbours(List<ServerCommunicationInterface> neighbours){
@@ -354,6 +365,11 @@ public class TransactionManager implements Serializable {
 	}
 	
 	public List<ResultSet> executeRemote(List<Operation> ops, String gid, long timestamp, int sid){
+		if(ops.isEmpty()){
+			this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
+			return null;
+		}
+		
 		_scheduler.prepareTx(gid, timestamp);
 		_participantTxn.put(gid, sid);
 		//record the start log of this transaction
@@ -368,8 +384,6 @@ public class TransactionManager implements Serializable {
 			}
 			this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
 		}
-		else
-			this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
 		return ret;
 	}
 
