@@ -36,10 +36,12 @@ public class TransactionManager implements Serializable {
 		this.multiTxnState = multiTxnState;
 		this.serverId = serverId;
 		_scheduler = new Scheduler(this);
-		_2PC = new CommitCoordinator(this);
+		
 		_coordinatorTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
 		_processedMultiSiteTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
 		_participantTxn = new ConcurrentHashMap<String, Integer>();
+		
+		_2PC = new CommitCoordinator(this);
 		_2PCThread = new Thread(_2PC);
 		_2PCThread.start();
 	}
@@ -212,16 +214,7 @@ public class TransactionManager implements Serializable {
 	 * @return	balance of account belonging to uid1
 	 */
 	public String txnTransfer(String gid, String uid1, String uid2, int amount,	Long timestamp) throws RemoteException {
-		modalPopup(gid, StepMessages.BEGIN.value);
 		_scheduler.prepareTx(gid, timestamp);
-		
-		/**
-		 * This transaction is spanning multiple servers, and should be coordinated by 2PC
-		 * This server assumes the responsibility as a 2PC coordinator
-		 */
-		
-		//record the start log of this transaction
-		multiTxnState.unfinishedTxn.put(gid, State.TPCSTART);
 		
 		/**
 		 * Check if uid2 exists on any of the connected servers (including the currently connected one)
@@ -233,6 +226,10 @@ public class TransactionManager implements Serializable {
 		} else {
 			for(ServerCommunicationInterface svr: neighbour_server) {
 				if(svr.isExist(uid2)){
+					
+					//record the start log of this transaction
+					multiTxnState.unfinishedTxn.put(gid, State.TPCSTART);
+					
 					uid2AccountOnSvr = svr;
 					uid2Exists = true;
 					break;
@@ -244,7 +241,9 @@ public class TransactionManager implements Serializable {
 			ServerGUI.log(uid2 + " account does not exist in the servers");
 			return null;
 		}
+
 		
+		modalPopup(gid, StepMessages.BEGIN.value);
 		
 		/**
 		 * Read balance1 and 2 (from uid1 and uid2)
@@ -264,6 +263,7 @@ public class TransactionManager implements Serializable {
 			balance1 = Integer.valueOf(((String)rs.get(0).getVal()));
 			balance2 = Integer.valueOf(((String)rs.get(1).getVal()));
 		}else{
+			
 			// Store gid -> remote serverid
 			_initiatedTxn.put(gid, new ArrayList<Integer>(Arrays.asList(uid2AccountOnSvr.getServerID())));
 			
@@ -294,6 +294,8 @@ public class TransactionManager implements Serializable {
 			balance2 = Integer.valueOf(((String)rs.get(0).getVal()));
 		}
 		
+		modalPopup(gid, "Read balances");
+		
 		/**
 		 * Calculate updated balances
 		 */
@@ -312,7 +314,7 @@ public class TransactionManager implements Serializable {
 				
 		}else{				
 			// Update uid1 on connected server and uid2 on remote server
-			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(balance1))), gid, timestamp);
+			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(updatedBalance1))), gid, timestamp);
 			if (rs == null) {
 				modalPopup(gid, StepMessages.PREABORT.value);
 				try {_scheduler.abort(gid);} catch (Exception e) {}
@@ -324,7 +326,7 @@ public class TransactionManager implements Serializable {
 				return null;
 			}
 			
-			rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(balance2))), gid, timestamp, serverId);	
+			rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp, serverId);	
 			if (rs == null) {
 				modalPopup(gid, StepMessages.PREABORT.value);
 				try {_scheduler.abort(gid);} catch (Exception e) {}
@@ -333,6 +335,8 @@ public class TransactionManager implements Serializable {
 				return null;
 			}			
 		}
+		
+		modalPopup(gid, "Wrote new balances");
 		
 		// Update the ProcessedTransaction state to precommit
 		for (ProcessedTransaction pt : _processedMultiSiteTxn) {

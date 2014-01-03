@@ -1,12 +1,13 @@
 package Server;
 
+import java.io.Serializable;
 import java.util.concurrent.ConcurrentHashMap;
 /**
  * Maintaining the state of multiple site txn
  * @author lsu
  *
  */
-public class MultiTxnState {
+public class MultiTxnState implements Serializable {
 	public ConcurrentHashMap<String, State> finishedTxn;
 	public ConcurrentHashMap<String, State> unfinishedTxn;
 	

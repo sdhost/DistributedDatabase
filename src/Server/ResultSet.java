@@ -1,9 +1,11 @@
 package Server;
 
+import java.io.Serializable;
+
 /**
  * Class used to maintain the state of a transaction
  */
-public class ResultSet {
+public class ResultSet implements Serializable {
 	private String _type = null;
 	private Object _val;
 	

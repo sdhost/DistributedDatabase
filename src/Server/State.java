@@ -1,6 +1,8 @@
 package Server;
 
-public enum State {
+import java.io.Serializable;
+
+public enum State implements Serializable {
 	EMPTY(0),
 	ONLINE(1),
 	OFFLINE(2),

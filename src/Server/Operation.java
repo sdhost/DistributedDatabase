@@ -1,9 +1,11 @@
 package Server;
 
+import java.io.Serializable;
+
 /**
  * Class used to represent a single operation
  */
-public class Operation {
+public class Operation implements Serializable {
 	public enum type {READ, WRITE}
 	
 	private type _t;
