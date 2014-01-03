@@ -107,6 +107,10 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	public State getServerState() throws RemoteException {
 		return serverState;
 	}
+	
+	public void setServerState(State s) {
+		serverState = s;
+	}
 
 	
 	//**************************************************************
@@ -142,6 +146,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	
 	@Override
 	public String txnCreatingAccounts(int balance) throws RemoteException {
+		if (serverState != State.ONLINE)
+			return null;
+		
 		String gid = this.txnCreation();
 		String uid = this.nextUid();
 		_tm.txnCreatingAccounts(balance, gid, uid, this.txnTime.get(gid));
@@ -154,6 +161,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 	@Override
 	public String txnCheckingBalance(String uid) throws RemoteException {
+		if (serverState != State.ONLINE)
+			return null;
+		
 		String gid = this.txnCreation();
 		String balance = _tm.txnCheckingBalance(gid, uid, this.txnTime.get(gid));
 		
@@ -166,6 +176,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 	@Override
 	public String txnDeposit(String uid, int amount) throws RemoteException {
+		if (serverState != State.ONLINE)
+			return null;
+		
 		String gid = this.txnCreation();
 		String balance = _tm.txnDeposit(gid,uid,amount, this.txnTime.get(gid));
 
@@ -178,6 +191,9 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 	@Override
 	public String txnWithdraw(String uid, int amount) throws RemoteException {
+		if (serverState != State.ONLINE)
+			return null;
+		
 		String gid = this.txnCreation();
 		String balance = _tm.txnWithdraw(gid,uid,amount, this.txnTime.get(gid));
 
@@ -189,8 +205,10 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 
 	@Override
-	public String txnTransfer(String uid1, String uid2, int amount)
-			throws RemoteException {
+	public String txnTransfer(String uid1, String uid2, int amount)	throws RemoteException {
+		if (serverState != State.ONLINE)
+			return null;
+		
 		String gid = this.txnCreation();
 		String balance = _tm.txnTransfer(gid,uid1,uid2,amount, this.txnTime.get(gid));
 		

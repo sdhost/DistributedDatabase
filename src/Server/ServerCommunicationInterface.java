@@ -23,8 +23,7 @@ public interface ServerCommunicationInterface extends Remote{
 	
 	//Remote Execution
 	//call replyVote for return
-	List<ResultSet> remoteExecute(List<Operation> ops, String gid,
-			long timestamp, int sid) throws RemoteException;
+	List<ResultSet> remoteExecute(List<Operation> ops, String gid,	long timestamp, int sid) throws RemoteException;
 	
 	//Check whether tuple is stored in this server
 	boolean isExist(String tupleId) throws RemoteException;

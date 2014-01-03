@@ -40,7 +40,7 @@ public class DataManager {
 	 * Using to check whether tuple is in this server
 	 */
 	public boolean exist(String tupleID){
-		return this.TupleIdToValue.contains(tupleID);
+		return this.TupleIdToValue.containsKey(tupleID);
 	}
 	
 	public void Abort(String gid) throws Exception {
