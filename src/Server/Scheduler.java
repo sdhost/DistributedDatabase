@@ -11,8 +11,10 @@ import Server.Operation.type;
 public class Scheduler {
 	private LockManager _lockmanager;
 	private DataManager _datamanager;
+	private TransactionManager _tm;
 	
 	public Scheduler(TransactionManager tm) {
+		_tm = tm;
 		_datamanager = new DataManager();
 		_lockmanager = new LockManager(tm, _datamanager);
 	}
@@ -92,6 +94,7 @@ public class Scheduler {
 	}
 
 	public void abort(String gid) throws Exception {
+		_tm._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
 		_datamanager.Abort(gid);
 		
 		// Release all locks, held by transaction
@@ -105,6 +108,7 @@ public class Scheduler {
 	}
 	
 	public void commit(String gid){
+		_tm._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
 		_datamanager.Commit(gid);
 		
 		// Release all locks, held by transaction
