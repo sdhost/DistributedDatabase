@@ -16,9 +16,6 @@ public class TransactionManager implements Serializable {
 	private List<ServerCommunicationInterface> neighbour_server;
 	public ConcurrentLinkedQueue<ProcessedTransaction> _processedMultiSiteTxn;
 	
-	
-	//TODO: Kaiji: if a transaction that involves multiple servers is initiated in the local TM,
-	//the local TM will put the server IDs of other involved Servers into _initiatedTxn(except for local server id), where the key is gid.
 	public volatile ConcurrentHashMap<String, ArrayList<Integer>> _initiatedTxn = new ConcurrentHashMap<String, ArrayList<Integer>>();
 	
 	public TransactionManager() throws IOException {
@@ -62,9 +59,10 @@ public class TransactionManager implements Serializable {
 		List<ResultSet> rs = _scheduler.execute(toApply, gid, timestamp);
 		ResultSet result = rs.iterator().next();
 		
-		this.finish(gid, result);
-		
-		return (String)result.getVal();
+		if(result == null)
+			return null;
+		else
+			return (String)result.getVal();
 	}
 
 	public String txnDeposit(String gid, String uid, int amount, Long timestamp) {
@@ -84,10 +82,10 @@ public class TransactionManager implements Serializable {
 		rs = _scheduler.execute(toApply, gid, timestamp);
 		result = rs.iterator().next();
 		
-		this.finish(gid, result);
-		
-		//We can read it again if necessary
-		return String.valueOf(balance + amount);
+		if(result == null)
+			return null;
+		else
+			return this.txnCheckingBalance(gid, uid, timestamp);
 	}
 
 	public String txnWithdraw(String gid, String uid, int amount, Long timestamp){
@@ -114,9 +112,10 @@ public class TransactionManager implements Serializable {
 		rs = _scheduler.execute(toApply, gid, timestamp);
 		result = rs.iterator().next();
 				
-		this.finish(gid, result);
-		//We can read it again if necessary
-		return String.valueOf(balance - amount);
+		if(result == null)
+			return null;
+		else
+			return this.txnCheckingBalance(gid, uid, timestamp);
 	}
 
 	//Assume uid1 are in this server, uid2 in remote server or this server
@@ -201,9 +200,10 @@ public class TransactionManager implements Serializable {
 		}
 		
 		
-		this.finish(gid, result);
-		
-		return String.valueOf(balance1);
+		if(result == null)
+			return null;
+		else
+			return this.txnCheckingBalance(gid, uid1, timestamp);
 	}
 
 	public void initNeighbour(List<ServerCommunicationInterface> neighbour){
