@@ -120,7 +120,12 @@ public class CommitCoordinator implements Runnable{
 										//TODO:write end of transaction into log
 									}
 									else if(decision == State.TPCABORT){
-										tm.abort(gid);
+										try {
+											tm.abort(gid);
+										} catch (Exception e) {
+											// TODO Auto-generated catch block
+											e.printStackTrace();
+										}
 										//TODO:write end of transaction into log
 									}
 								}else{

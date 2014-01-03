@@ -268,7 +268,12 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			_tm.commit(gid);
 		}else if(decision == State.TPCABORT){
 			//TODO: write abort into log
-			_tm.abort(gid);
+			try {
+				_tm.abort(gid);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		ProcessedTransaction targetTxn = null;
 		Iterator<ProcessedTransaction> it = _tm._processedMultiSiteTxn.iterator();
