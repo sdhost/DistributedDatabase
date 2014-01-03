@@ -14,7 +14,7 @@ import javax.swing.JTextArea;
 
 public class ServerGUI {
 	private JFrame frame;
-	private Server server;//TODO: Require a server list for all the available servers, call server.initialNeighbour(List<Server>)
+	private Server server;
 	private static JTextArea txtOutput;
 	private JLabel lblServerPort;
 	private JLabel lblServerIP;
@@ -81,7 +81,8 @@ public class ServerGUI {
 			
 			// Init server
 			server = new Server(serverIp, serverPort, serverId);
-			//server.initialNeighbour(c);
+			server.initialNeighbour(c);
+			
 			lblServerIP.setText(serverIp);
 			lblServerPort.setText(String.valueOf(serverPort));
         } catch(UnknownHostException uhe){
