@@ -265,32 +265,30 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	//proceed the global vote decision
 	@Override
 	public String proceedVoteDecision(String gid, State decision){
+		
 		if(serverState == State.OFFLINE)
 			return null;
-		if(decision == State.TPCCOMMIT){
-			//write commit into log
-			multiTxnState.unfinishedTxn.put(gid, State.TPCCOMMIT);
-			_tm.commit(gid);
-			multiTxnState.unfinishedTxn.remove(gid);
-			multiTxnState.finishedTxn.put(gid, State.FINISH);
-		}else if(decision == State.TPCABORT){
-			//write abort into log
-			try {
-				multiTxnState.unfinishedTxn.put(gid, State.TPCABORT);
-				_tm.abort(gid);
-				multiTxnState.unfinishedTxn.remove(gid);
-				multiTxnState.finishedTxn.put(gid, State.FINISH);
-			} catch (Exception e) {
-				e.printStackTrace();
+		
+		
+		if(_tm._participantTxn.containsKey(gid)){
+			if(decision == State.TPCCOMMIT){
+				//write commit into log
+				multiTxnState.unfinishedTxn.put(gid, State.TPCCOMMIT);
+				_tm.commit(gid);
+			}else if(decision == State.TPCABORT){
+				//write abort into log
+				try {
+					multiTxnState.unfinishedTxn.put(gid, State.TPCABORT);
+					_tm.abort(gid);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
 		}
-		ProcessedTransaction targetTxn = null;
-		Iterator<ProcessedTransaction> it = _tm._processedMultiSiteTxn.iterator();
-		while(it.hasNext()){
-			ProcessedTransaction txn = it.next();
-			if(txn.getGid() == gid)
-				targetTxn = txn;
-		}
+		
+		
+		//remove the finished transaction from partitipant txns
+		_tm._participantTxn.remove(gid);
 		return gid;
 	}
 	
@@ -302,50 +300,80 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		for(Entry<String, State> txn : this.multiTxnState.unfinishedTxn.entrySet()){
 			String gid = txn.getKey();
 			State state = txn.getValue();
+			boolean isCoordinator = false;
+			
+			for(ProcessedTransaction t: this._tm._coordinatorTxn){
+				if(t.getGid() == gid){
+					isCoordinator = true;
+					break;
+				}
+			}
 			
 			//txn with this server as coordinator
-			if(this._tm._coordinatorTxn.contains(gid)){
-				
+			if(isCoordinator){
 				
 				if(state == State.TPCPREPARE){
-					//put the transaction back to restart 2PC commit
-					for(ProcessedTransaction multiTxn : this._tm._processedMultiSiteTxn){
-						if(multiTxn.getGid() == gid){
-							this._tm._coordinatorTxn.add(new ProcessedTransaction(gid, multiTxn.getState()));
+					//do nothing	
+				}
+				
+				if(state == State.TPCSTART){
+					//do nothing	
+				}
+				
+				if(state == State.TPCCOMMIT || state == State.TPCABORT){
+					
+					if(state == State.TPCABORT){
+						try {
+							//undo == abort
+							this._tm.abort(gid);
+						} catch (Exception e) {
+							e.printStackTrace();
 						}
 					}
-							
-				}
-				
-				if(state == State.TPCCOMMIT){
-					//redo == do nothing
-				}
-				
-				if(state == State.TPCABORT){
-					try {
-						//undo == abort
-						this._tm.abort(gid);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-				
-				
 					
+					//get all acks to go into FINISH
+					//announce other participants about the vote result
+					ArrayList<Integer> ackList = new ArrayList<Integer>();
+					for(int i=0; i<this._tm._initiatedTxn.get(gid).size();i++){
+						int cid = this._tm._initiatedTxn.get(gid).get(i);
+							String serverAddress = conf.getAllServers().get(cid).split(":")[0];
+							int serverPort = Integer.valueOf(conf.getAllServers().get(cid).split(":")[1]);
+							Registry registry;
+							ServerCommunicationInterface rmiServer;
+							try {
+								registry = LocateRegistry.getRegistry(serverAddress, serverPort);
+								rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
+								
+								String ack = rmiServer.proceedVoteDecision(gid, state);
+								while(ack == null){
+									Thread.sleep(500);
+									ack = rmiServer.proceedVoteDecision(gid, state);
+								}
+								ackList.add(cid);
+							}catch (RemoteException | NotBoundException | InterruptedException e1) {continue;}
+					}
+					//check if coordinator received acks from all participants
+					if(ackList.size() == this._tm._initiatedTxn.get(gid).size()){
+						multiTxnState.unfinishedTxn.remove(gid);
+						multiTxnState.finishedTxn.put(gid, State.FINISH);
+					}else{
+						//this won't happen
+					}
+					
+					//remove the finished txn
+					for(ProcessedTransaction t : this._tm._coordinatorTxn){
+						if(t.getGid() == gid){
+							this._tm._coordinatorTxn.remove(t);
+							break;
+						}
+					}
+					
+				}	
 			}
 			//txn with this server as participant
-			else if(this._tm._participantTxn.contains(gid)){
-
-				if(state == State.TPCABORT){
-					try {
-						//undo == abort
-						this._tm.abort(gid);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
+			else{
 				
-				//TODO: should I use start here or prepare ?
+				//before vote
 				if(state == State.TPCSTART){
 					try {
 						//undo == abort
@@ -354,6 +382,17 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 						e.printStackTrace();
 					}
 				}
+				
+				if(state == State.TPCABORT){
+					try {
+						//undo == abort
+						this._tm.abort(gid);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				
+				
 				
 				if(state == State.TPCCOMMIT){
 					//redo == do nothing
@@ -391,13 +430,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 								e.printStackTrace();
 							}
 						}
-						
-						
-					} catch (RemoteException | NotBoundException | InterruptedException e) {
-						e.printStackTrace();
-					}
-					
-					
+					} catch (RemoteException | NotBoundException | InterruptedException e) {e.printStackTrace();}
 					
 				}
 			}

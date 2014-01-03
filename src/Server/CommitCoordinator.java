@@ -43,7 +43,7 @@ public class CommitCoordinator implements Runnable{
 			else{
 				while(coordinatingTxn.size()!=0){
 						
-							ProcessedTransaction txn = coordinatingTxn.poll();
+							ProcessedTransaction txn = coordinatingTxn.element();
 							String gid = txn.getGid();
 							//TODO: add start log in transaction manager
 							//write prepare message to log
@@ -139,7 +139,8 @@ public class CommitCoordinator implements Runnable{
 								}else{
 									//this won't happen
 								}
-							
+							//remove the finished TXN from coordinatorTxn
+								this.coordinatingTxn.poll();
 				}
 			}
 			

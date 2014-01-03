@@ -62,8 +62,7 @@ public class HeartMonitor implements Runnable{
 											//TODO:abort the transaction that coordinated by the failed server
 											for(Entry<String, Integer> txn: server.get_tm()._participantTxn.entrySet()){
 												if(txn.getValue() == id){
-													server.multiTxnState.unfinishedTxn.remove(txn.getKey());
-													server.multiTxnState.finishedTxn.put(txn.getKey(), State.TPCABORT);
+													server.multiTxnState.unfinishedTxn.put(txn.getKey(), State.TPCABORT);
 													try {
 														server.get_tm().abort(txn.getKey());
 													} catch (Exception e1) {
