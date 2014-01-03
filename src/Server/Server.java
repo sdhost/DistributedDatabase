@@ -24,6 +24,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	private int shift = 4;
 	private TransactionManager _tm;
 	private List<ServerCommunicationInterface> neighbour_server;
+	public Configuration conf;
 
 	
 	//For each new account in system, the primary key uid for it will be generated as
@@ -33,7 +34,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	private volatile ConcurrentHashMap<String, State> txnStates;// All the transaction states that the result is not returned
 	private volatile ConcurrentHashMap<String, String> txnResult;// All the transaction results that the result is not returned
 	private volatile ConcurrentHashMap<String, Long> txnTime;//All the transaction creation time that the result is not returned
-	private Map<Integer, State> heartbeatStates;
+	public Map<Integer, State> heartbeatStates;
 	public volatile int a = 999;
 	public HeartMonitor heartMonitor;
 	public MultiTxnState multiTxnState;
@@ -53,7 +54,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         serverState = State.ONLINE;
         uniqueServerId = serverId;
         this.multiTxnState = new MultiTxnState();
-        
+        this.conf= Configuration.fromFile("conf.txt");
         _tm = new TransactionManager(uniqueServerId, multiTxnState);
         
         //Make sure the uid will be valid
@@ -62,7 +63,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         this.txnTime = new ConcurrentHashMap<String,Long>();
         this.heartbeatStates = new HashMap<Integer, State>();
         
-        heartMonitor = new HeartMonitor(this.heartbeatStates, serverId);
+        heartMonitor = new HeartMonitor(this);
         Thread heartThread = new Thread(heartMonitor);
         heartThread.start();
 	}
@@ -293,7 +294,116 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		return gid;
 	}
 	
-	
+	/**
+	 * Recover from failure
+	 */
+	public void recoverServer(){
+		//check all the unfinished multi-site txn
+		for(Entry<String, State> txn : this.multiTxnState.unfinishedTxn.entrySet()){
+			String gid = txn.getKey();
+			State state = txn.getValue();
+			
+			//txn with this server as coordinator
+			if(this._tm._coordinatorTxn.contains(gid)){
+				
+				
+				if(state == State.TPCPREPARE){
+					//put the transaction back to restart 2PC commit
+					for(ProcessedTransaction multiTxn : this._tm._processedMultiSiteTxn){
+						if(multiTxn.getGid() == gid){
+							this._tm._coordinatorTxn.add(new ProcessedTransaction(gid, multiTxn.getState()));
+						}
+					}
+							
+				}
+				
+				if(state == State.TPCCOMMIT){
+					//redo == do nothing
+				}
+				
+				if(state == State.TPCABORT){
+					try {
+						//undo == abort
+						this._tm.abort(gid);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				
+				
+					
+			}
+			//txn with this server as participant
+			else if(this._tm._participantTxn.contains(gid)){
+
+				if(state == State.TPCABORT){
+					try {
+						//undo == abort
+						this._tm.abort(gid);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				
+				//TODO: should I use start here or prepare ?
+				if(state == State.TPCSTART){
+					try {
+						//undo == abort
+						this._tm.abort(gid);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				
+				if(state == State.TPCCOMMIT){
+					//redo == do nothing
+				}
+				
+				if(state == State.PRECOMMIT || state == State.PREABORT){
+					//consult the coordinator to see the final decision
+					int coordinatorId = this._tm._participantTxn.get(gid);
+					String address = conf.getAllServers().get(coordinatorId);
+					String serverAddress = address.split(":")[0];
+					int serverPort = Integer.valueOf(address.split(":")[1]);
+					
+					Registry registry;
+					ServerCommunicationInterface rmiServer;
+					try {
+						registry = LocateRegistry.getRegistry(serverAddress, serverPort);
+						rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
+						
+						MultiTxnState cMultiTxnState = rmiServer.getMultiTxnState();
+						while(cMultiTxnState == null){
+							Thread.sleep(500);
+							cMultiTxnState = rmiServer.getMultiTxnState();
+						}
+						
+						State finalDecision = cMultiTxnState.unfinishedTxn.get(gid);
+						if(finalDecision == State.TPCCOMMIT){
+							//redo == do nothing
+						}
+						
+						if(finalDecision == State.TPCABORT){
+							try {
+								//undo == abort
+								this._tm.abort(gid);
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+						}
+						
+						
+					} catch (RemoteException | NotBoundException | InterruptedException e) {
+						e.printStackTrace();
+					}
+					
+					
+					
+				}
+			}
+			
+		}
+	}
 	//Send message to other server with user specification protocol
 	//Return some message for user
 	@Override
@@ -327,4 +437,17 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		return this.uniqueServerId;
 	}
 
+	@Override
+	public MultiTxnState getMultiTxnState(){
+		if(this.serverState == State.OFFLINE)
+			return null;
+		
+		return multiTxnState;
+	}
+	
+	public TransactionManager get_tm() {
+		return _tm;
+	}
+
+	
 }
