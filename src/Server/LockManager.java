@@ -59,7 +59,7 @@ public class LockManager {
 			return false;
 		}else{//There exist some other transactions hold the lock
 			LinkedHashMap<String, Boolean> oldLock = this.tupleLocks.get(tupleId);
-			if((oldLock.containsKey(gid) && type == true) || (oldLock.containsKey(gid) && type == oldLock.get(gid))){
+			if((oldLock.containsKey(gid) && type == false) || (oldLock.containsKey(gid) && type == oldLock.get(gid))){
 				//Already granted
 				return false;
 			}

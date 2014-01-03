@@ -15,6 +15,7 @@ import javax.swing.JButton;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import javax.swing.JCheckBox;
+import javax.swing.JScrollPane;
 
 public class ServerGUI {
 	private static JFrame frame;
@@ -128,6 +129,13 @@ public class ServerGUI {
 			chckbxUsePopups = new JCheckBox("Use popups");
 			chckbxUsePopups.setBounds(458, 8, 129, 23);
 			frame.getContentPane().add(chckbxUsePopups);
+			
+			JScrollPane scrollPane = new JScrollPane();
+			scrollPane.setBounds(12, 68, 575, 237);
+			frame.getContentPane().add(scrollPane);
+			
+			txtOutput = new JTextArea();
+			scrollPane.setViewportView(txtOutput);
         } catch(UnknownHostException uhe){
         	log(uhe.toString());
         	return;
@@ -170,10 +178,6 @@ public class ServerGUI {
 		lblServerPort = new JLabel("obtaining...");
 		lblServerPort.setBounds(123, 39, 180, 15);
 		frame.getContentPane().add(lblServerPort);
-		
-		txtOutput = new JTextArea();
-		txtOutput.setBounds(12, 66, 575, 239);
-		frame.getContentPane().add(txtOutput);
 	}
 	public JButton getButFail() {
 		return butFail;
