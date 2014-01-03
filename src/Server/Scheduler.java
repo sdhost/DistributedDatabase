@@ -94,7 +94,6 @@ public class Scheduler {
 	}
 
 	public void abort(String gid) throws Exception {
-		_tm._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
 		_datamanager.Abort(gid);
 		
 		// Release all locks, held by transaction
@@ -108,7 +107,7 @@ public class Scheduler {
 	}
 	
 	public void commit(String gid){
-		_tm._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
+		
 		_datamanager.Commit(gid);
 		
 		// Release all locks, held by transaction

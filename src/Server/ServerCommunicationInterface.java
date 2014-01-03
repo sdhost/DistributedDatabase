@@ -33,4 +33,7 @@ public interface ServerCommunicationInterface extends Remote{
 	//Return the multi txn log
 	MultiTxnState getMultiTxnState() throws RemoteException;
 	
+	//Update remote transaction state
+	
+	
 }

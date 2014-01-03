@@ -274,10 +274,10 @@ public class TransactionManager implements Serializable {
 				try {_scheduler.abort(gid);} catch (Exception e) {}
 				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with checking balance");
-				
-				// TODO: Set status to PREABORT
+				this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
 				return null;
 			}
+			
 			balance1 = Integer.valueOf(((String)rs.iterator().next().getVal()));
 			
 			// Read balance2 from remote serverid
@@ -287,7 +287,7 @@ public class TransactionManager implements Serializable {
 				try {_scheduler.abort(gid);} catch (Exception e) {}
 				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with checking balance");
-
+				
 				// TODO: Set status to PREABORT
 				
 			}	
@@ -312,7 +312,10 @@ public class TransactionManager implements Serializable {
 				return null;
 			}
 				
-		}else{				
+		}else{
+			
+			modalPopup(gid, "Read local");
+			
 			// Update uid1 on connected server and uid2 on remote server
 			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(updatedBalance1))), gid, timestamp);
 			if (rs == null) {
@@ -320,12 +323,13 @@ public class TransactionManager implements Serializable {
 				try {_scheduler.abort(gid);} catch (Exception e) {}
 				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with writing updated balance");
-				
+				this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
 				// TODO: Set status to PREABORT
 				
 				return null;
 			}
 			
+			modalPopup(gid, "Read remote");
 			rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp, serverId);	
 			if (rs == null) {
 				modalPopup(gid, StepMessages.PREABORT.value);
@@ -333,22 +337,13 @@ public class TransactionManager implements Serializable {
 				modalPopup(gid, StepMessages.ABORTED.value);
 				ServerGUI.log("Problem with writing updated balance");
 				return null;
-			}			
+			}
+			
+			
 		}
 		
-		modalPopup(gid, "Wrote new balances");
 		
-		// Update the ProcessedTransaction state to precommit
-		for (ProcessedTransaction pt : _processedMultiSiteTxn) {
-			if (pt.getGid().equals(gid)) {
-				modalPopup(gid, StepMessages.PRECOMMIT.value);
-				pt.setState(State.PRECOMMIT);
-			}
-				
-			if(_initiatedTxn.containsKey(gid)){
-				_coordinatorTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
-			}
-		}
+		
 		
 		// Return balance of account belonging to uid1
 		return String.valueOf(updatedBalance1);
@@ -363,7 +358,19 @@ public class TransactionManager implements Serializable {
 		_participantTxn.put(gid, sid);
 		//record the start log of this transaction
 		multiTxnState.unfinishedTxn.put(gid, State.TPCSTART);
-		return this._scheduler.execute(ops, gid, timestamp);
+		List<ResultSet> ret = this._scheduler.execute(ops, gid, timestamp);
+		if(ret == null){
+			try {
+				this._scheduler.abort(gid);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
+		}
+		else
+			this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
+		return ret;
 	}
 
 	public boolean exists(String tupleId) {
