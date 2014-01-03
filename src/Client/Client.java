@@ -63,6 +63,8 @@ public class Client{
 		}
 		
 		String gid = rmiServer.txnCheckingBalance(uid);
+		if (gid == null)
+			return null;
 		
 		while(true){
 			State s = rmiServer.getTxnState(gid);
@@ -91,6 +93,8 @@ public class Client{
 		}
 		
 		String gid = rmiServer.txnDeposit(uid, amount);
+		if (gid == null)
+			return null;
 		
 		while(true){
 			State s = rmiServer.getTxnState(gid);
@@ -117,6 +121,8 @@ public class Client{
 		}
 		
 		String gid = rmiServer.txnWithdraw(uid, amount);
+		if (gid == null)
+			return null;
 		
 		while(true){
 			State s = rmiServer.getTxnState(gid);
@@ -144,6 +150,8 @@ public class Client{
 		}
 
 		String gid = rmiServer.txnTransfer(uid1, uid2, amount);
+		if (gid == null)
+			return null;
 		
 		while(true){
 			State s = rmiServer.getTxnState(gid);

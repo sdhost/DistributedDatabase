@@ -131,6 +131,11 @@ public class ClientGUI {
 				
 				try {
 					String balance = client.txnDeposit(selectedAccountId, depositVal);
+					if (balance == null) {
+						ClientGUI.log("Couldn't deposit into account");
+						return;
+					}
+					
 					ClientGUI.log("AccountId: " + selectedAccountId + " has balance " + balance);
 				} catch (Exception ex) {
 					 log(ex.toString());
@@ -159,6 +164,11 @@ public class ClientGUI {
 				
 				try {
 					String balance = client.txnWithdraw(selectedAccountId, depositVal);
+					if (balance == null) {
+						ClientGUI.log("Couldn't withdraw from account");
+						return;
+					}
+					
 					ClientGUI.log("AccountId: " + selectedAccountId + " has balance " + balance);
 				} catch (Exception ex) {
 					 log(ex.toString());
@@ -190,6 +200,12 @@ public class ClientGUI {
 				
 				try {
 					String balance = client.txnTransfer(selectedAccountId, toAccountId, transferVal);
+					if (balance == null) {
+						ClientGUI.log("Couldn't transfer from account");
+						return;
+					}
+					
+					
 					ClientGUI.log("AccountId: " + selectedAccountId + " has balance " + balance);
 				} catch (Exception ex) {
 					 log(ex.toString());
