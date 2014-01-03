@@ -2,6 +2,7 @@ package Server;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.util.List;
 
 public interface ServerCommunicationInterface extends Remote{
 
@@ -20,5 +21,16 @@ public interface ServerCommunicationInterface extends Remote{
 	//Return some message for user
 	String send(String message) throws RemoteException;
 	
+	//Remote Execution
+	//call replyVote for return
+	List<ResultSet> remoteExecute(List<Operation> ops, String gid,
+			long timestamp) throws RemoteException;
+	
+	//Check whether tuple is stored in this server
+	boolean isExist(String tupleId) throws RemoteException;
+	
+	int getServerID() throws RemoteException;
+
+
 	
 }

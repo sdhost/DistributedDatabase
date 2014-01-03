@@ -19,13 +19,17 @@ public class LockManager {
 											
 	private volatile ConcurrentHashMap<String,Map<String,String>> message; // A error message holder, Map<TxnId,Map<TxnId, ErrorMessage>>
 													// ErrorMessage will be split by tab("\t") if contains messages more than one column
+	private TransactionManager _tm = null;
 	
+	private DataManager _dm = null;
 	
 	// Maintain for each bank account
 	// - The type of lock that is currently held
 	// - A list of transactions holding the lock
 	// - a queue of lock requests
-	public LockManager(){
+	public LockManager(TransactionManager tm, DataManager dm){
+		this._tm = tm;
+		this._dm = dm;
 		this.tupleLocks = new ConcurrentHashMap<String, LinkedHashMap<String, Boolean>>();
 		this.txnTime = new ConcurrentHashMap<String, Long>();
 		this.waitingQueue = new ConcurrentHashMap<String, LinkedList<String>>();
@@ -101,8 +105,14 @@ public class LockManager {
 				return true;
 			}
 			else if(abortOther){//All the other transactions hold the lock need to abort
-				Map<String,String> newError = new HashMap<String,String>();
+				Map<String,String> newError;
+				if(this.message.contains(gid))
+					newError = this.message.get(gid);
+				else
+					newError = new HashMap<String,String>();
+				
 				for(String txn:abortTxn){
+					_tm._processedMultiSiteTxn.add(new ProcessedTransaction(txn,State.PREABORT));
 					oldLock.remove(txn);
 					String mess = "O\tNeed to Abort";
 					newError.put(txn, mess);
@@ -119,6 +129,10 @@ public class LockManager {
 	//Before each transaction started to acquire lock, it need to have the creation time setted in the lock manager
 	public void prepareLocking(String gid, long time){
 		this.txnTime.put(gid, time);
+	}
+	
+	public boolean isPrepared(String gid){
+		return this.txnTime.containsKey(gid);
 	}
 	
 	public Map<String, String> getMessages(String gid){

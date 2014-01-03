@@ -44,4 +44,5 @@ public interface DataOperationInterface extends Remote {
 	State getServerState() throws RemoteException;
 	
 	
+	
 }

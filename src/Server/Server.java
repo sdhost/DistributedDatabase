@@ -1,13 +1,17 @@
 package Server;
 
 import java.io.IOException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server extends java.rmi.server.UnicastRemoteObject implements DataOperationInterface, ServerCommunicationInterface{
@@ -19,13 +23,14 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	private int serialId = 0;//Should be less than 9,999
 	private int shift = 4;
 	private TransactionManager _tm;
+	private List<ServerCommunicationInterface> neighbour_server;
 	
 	//For each new account in system, the primary key uid for it will be generated as
 	// uid = uniqueServerId * 10^shift + serialId
 	// Each time a new uid is generated, the serialId will be increased by one
 	// Then we can have the unique primary key for all the tuples among all the server
 	private volatile ConcurrentHashMap<String, State> txnStates;// All the transaction states that the result is not returned
-	private volatile ConcurrentHashMap<String, Object> txnResult;// All the transaction results that the result is not returned
+	private volatile ConcurrentHashMap<String, String> txnResult;// All the transaction results that the result is not returned
 	private volatile ConcurrentHashMap<String, Long> txnTime;//All the transaction creation time that the result is not returned
 	private Map<Integer, State> heartbeatStates;
 	public volatile int a = 999;
@@ -51,12 +56,34 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         
         //Make sure the uid will be valid
         this.txnStates = new ConcurrentHashMap<String,State>();
-        this.txnResult = new ConcurrentHashMap<String, Object>();
+        this.txnResult = new ConcurrentHashMap<String, String>();
         this.txnTime = new ConcurrentHashMap<String,Long>();
         this.heartbeatStates = new HashMap<Integer, State>();
         heartMonitor = new HeartMonitor(this.heartbeatStates, serverId);
         Thread heartThread = new Thread(heartMonitor);
         heartThread.start();
+	}
+	
+	public void initialNeighbour(Configuration conf){
+		this.neighbour_server = new ArrayList<ServerCommunicationInterface>();
+		for(Entry<Integer, String> e : conf.getAllServers().entrySet()){
+			int id = e.getKey();
+			if(id != this.uniqueServerId){
+					String serverAddress = e.getValue().split(":")[0];
+					int serverPort = Integer.valueOf(e.getValue().split(":")[1]);
+					try {
+						registry = LocateRegistry.getRegistry(serverAddress, serverPort);
+						ServerCommunicationInterface rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
+						this.neighbour_server.add(rmiServer);
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					} catch (NotBoundException e1) {
+						e1.printStackTrace();
+					}	
+			}
+		}
+		
+		this._tm.initNeighbour(neighbour_server);
 	}
 
 
@@ -93,7 +120,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		String gid = String.valueOf(begin) + String.valueOf(this.uniqueServerId);
 		this.txnTime.put(gid, begin);
 		this.txnStates.put(gid, State.PROCESSING);
-		this.txnResult.put(gid, null);
+		this.txnResult.put(gid, "");
 		
 		return gid;
 	}
@@ -107,12 +134,14 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	@Override
 	public String txnCreatingAccounts(int balance) throws RemoteException {
 		
+		
 		String gid = this.txnCreation();
 		String uid = this.nextUid();
 		_tm.txnCreatingAccounts(balance, gid, uid, this.txnTime.get(gid));
 		//May add some error processing code here
 		this.txnStates.put(gid, State.FINISH);
 		this.txnResult.put(gid, uid);
+		
 		
 		return gid;
 	}
@@ -124,7 +153,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		String balance = _tm.txnCheckingBalance(gid, uid, this.txnTime.get(gid));
 		
 		this.txnStates.put(gid, State.FINISH);
-		this.txnResult.put(gid, Integer.valueOf(balance));
+		this.txnResult.put(gid, balance);
 		
 		return gid;
 	}
@@ -136,7 +165,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		String balance = _tm.txnDeposit(gid,uid,amount, this.txnTime.get(gid));
 
 		this.txnStates.put(gid, State.FINISH);
-		this.txnResult.put(gid, Integer.valueOf(balance));
+		this.txnResult.put(gid, balance);
 		
 		return gid;
 	}
@@ -148,7 +177,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		String balance = _tm.txnWithdraw(gid,uid,amount, this.txnTime.get(gid));
 
 		this.txnStates.put(gid, State.FINISH);
-		this.txnResult.put(gid, Integer.valueOf(balance));
+		this.txnResult.put(gid, balance);
 		
 		return gid;
 	}
@@ -162,7 +191,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		
 
 		this.txnStates.put(gid, State.FINISH);
-		this.txnResult.put(gid, Integer.valueOf(balance));
+		this.txnResult.put(gid, balance);
 		
 		return gid;
 	}
@@ -203,7 +232,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			return State.OFFLINE;
 		
 		ProcessedTransaction targetTxn = null;
-		Iterator<ProcessedTransaction> it = _tm._processedTxn.iterator();
+		Iterator<ProcessedTransaction> it = _tm._processedMultiSiteTxn.iterator();
 		while(it.hasNext()){
 			ProcessedTransaction txn = it.next();
 			if(txn.getGid() == gid)
@@ -242,14 +271,14 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			_tm.abort(gid);
 		}
 		ProcessedTransaction targetTxn = null;
-		Iterator<ProcessedTransaction> it = _tm._processedTxn.iterator();
+		Iterator<ProcessedTransaction> it = _tm._processedMultiSiteTxn.iterator();
 		while(it.hasNext()){
 			ProcessedTransaction txn = it.next();
 			if(txn.getGid() == gid)
 				targetTxn = txn;
 		}
 		if(targetTxn != null)
-			_tm._processedTxn.remove(targetTxn);
+			_tm._processedMultiSiteTxn.remove(targetTxn);
 		return gid;
 	}
 	
@@ -258,7 +287,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	//Return some message for user
 	@Override
 	public String send(String message) throws RemoteException {
-		// TODO Auto-generated method stub
+		
 		return null;
 	}
 
@@ -270,4 +299,21 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		else
 			return null;
 	}
+
+	@Override
+	public List<ResultSet> remoteExecute(List<Operation> ops, String gid, long timestamp) throws RemoteException {
+		return this._tm.executeRemote(ops, gid, timestamp);
+		
+	}
+
+	@Override
+	public boolean isExist(String tupleId) throws RemoteException {
+		return this._tm.isExist(tupleId);
+	}
+
+	@Override
+	public int getServerID() throws RemoteException {
+		return this.uniqueServerId;
+	}
+
 }
