@@ -1,10 +1,13 @@
 package Server;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LockManager {
@@ -17,7 +20,7 @@ public class LockManager {
 	private volatile ConcurrentHashMap<String, LinkedList<String>> waitingQueue;// A queue for lock requests, LinkedHashMap<TupleId, LinkedList<TxnID+LockType>>
 															 // TODO: Maybe need to have a priority queue? Refined later.
 											
-	private volatile ConcurrentHashMap<String,Map<String,String>> message; // A error message holder, Map<TxnId,Map<TxnId, ErrorMessage>>
+	//private volatile ConcurrentHashMap<String,Map<String,String>> message; // A error message holder, Map<TxnId,Map<TxnId, ErrorMessage>>
 													// ErrorMessage will be split by tab("\t") if contains messages more than one column
 	private TransactionManager _tm = null;
 	
@@ -33,7 +36,7 @@ public class LockManager {
 		this.tupleLocks = new ConcurrentHashMap<String, LinkedHashMap<String, Boolean>>();
 		this.txnTime = new ConcurrentHashMap<String, Long>();
 		this.waitingQueue = new ConcurrentHashMap<String, LinkedList<String>>();
-		this.message = new ConcurrentHashMap<String, Map<String,String>>();
+		//this.message = new ConcurrentHashMap<String, Map<String,String>>();
 	}
 	
 	// When a lock request arrives, check if any other transaction is
@@ -41,12 +44,12 @@ public class LockManager {
 	// into the list. Otherwise put in the waiting queue.
 	// Return false if the lock were succeed granted, otherwise return true
 	// If error exist, call getError(gid, tupleId) for further information
-	public boolean lock(String gid, String tupleId, Boolean type){
+	public boolean lock(String gid, String tupleId, Boolean type) throws Exception{
 		if(!this.txnTime.containsKey(gid)){
-			Map<String,String> newError = new HashMap<String,String>();
-			String mess = "E\tCall prepareLocking to initialize the timestamp first";
-			newError.put(gid, mess);
-			this.message.put(gid, newError);
+//			Map<String,String> newError = new HashMap<String,String>();
+//			String mess = "E\tCall prepareLocking to initialize the timestamp first";
+//			newError.put(gid, mess);
+//			this.message.put(gid, newError);
 			return true;
 		}
 		if(!tupleLocks.containsKey(tupleId)){//No other transactions hold the lock
@@ -98,28 +101,29 @@ public class LockManager {
 					this.waitingQueue.put(tupleId, list);
 				}
 				
-				Map<String,String> newError = new HashMap<String,String>();
-				String mess = "I\tWaiting for other transactions finish";
-				newError.put(gid, mess);
-				this.message.put(gid, newError);
+//				Map<String,String> newError = new HashMap<String,String>();
+//				String mess = "I\tWaiting for other transactions finish";
+//				newError.put(gid, mess);
+//				this.message.put(gid, newError);
 				return true;
 			}
 			else if(abortOther){//All the other transactions hold the lock need to abort
-				Map<String,String> newError;
-				if(this.message.contains(gid))
-					newError = this.message.get(gid);
-				else
-					newError = new HashMap<String,String>();
+//				Map<String,String> newError;
+//				if(this.message.contains(gid))
+//					newError = this.message.get(gid);
+//				else
+//					newError = new HashMap<String,String>();
 				
 				for(String txn:abortTxn){
 					_tm._processedMultiSiteTxn.add(new ProcessedTransaction(txn,State.PREABORT));
-					oldLock.remove(txn);
-					String mess = "O\tNeed to Abort";
-					newError.put(txn, mess);
+					_dm.Abort(txn);
+					this.release(txn);
+					//String mess = "O\tNeed to Abort";
+					//newError.put(txn, mess);
 				}
 				this.tupleLocks.get(tupleId).put(gid, type);
-				this.message.put(gid, newError);
-				return true;
+				//this.message.put(gid, newError);
+				return false;
 			}else{//All share locks
 				this.tupleLocks.get(tupleId).put(gid, type);
 				return false;
@@ -135,19 +139,19 @@ public class LockManager {
 		return this.txnTime.containsKey(gid);
 	}
 	
-	public Map<String, String> getMessages(String gid){
-		return this.message.get(gid);
-	}
+//	public Map<String, String> getMessages(String gid){
+//		return this.message.get(gid);
+//	}
 	
 	
 	
 	//Release all the locks hold by a transaction, may be called in transaction commit or abort
 	public boolean release(String gid){
 		if(!this.txnTime.containsKey(gid)){//This transaction doesn't have any locks request in lockManager
-			Map<String,String> newInfo = new HashMap<String,String>();
-			String mess = "I\tNo lock request exist for this transaction";
-			newInfo.put(gid, mess);
-			this.message.put(gid, newInfo);
+//			Map<String,String> newInfo = new HashMap<String,String>();
+//			String mess = "I\tNo lock request exist for this transaction";
+//			newInfo.put(gid, mess);
+//			this.message.put(gid, newInfo);
 			return true;
 		}
 		else{//Since the simultaneous transaction will not be a lot, 
@@ -157,9 +161,9 @@ public class LockManager {
 					entryTuple.getValue().remove(gid);
 					if(this.waitingQueue.containsKey(entryTuple.getKey()) && !this.waitingQueue.get(entryTuple.getKey()).isEmpty()){
 						LinkedList<Integer> processed = new LinkedList<Integer>();
+						Collections.sort(this.waitingQueue.get(entryTuple.getKey()), new timestampComparator(this.txnTime));
 						for(String req:this.waitingQueue.get(entryTuple.getKey())){
 							
-							//TODO: A priority queue may need here, keep the peek request be the transaction with the earliest creation time
 							String elem[] = req.split("\t");
 							String txnId = elem[0];
 							boolean type = Boolean.valueOf(elem[1]);

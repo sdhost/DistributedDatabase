@@ -83,7 +83,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			}
 		}
 		
-		this._tm.initNeighbour(neighbour_server);
+		this._tm.initNeighbours(neighbour_server);
 	}
 
 
@@ -306,7 +306,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 
 	@Override
 	public boolean isExist(String tupleId) throws RemoteException {
-		return this._tm.isExist(tupleId);
+		return this._tm.exists(tupleId);
 	}
 
 	@Override
