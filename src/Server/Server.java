@@ -277,8 +277,6 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			if(txn.getGid() == gid)
 				targetTxn = txn;
 		}
-		if(targetTxn != null)
-			_tm._processedMultiSiteTxn.remove(targetTxn);
 		return gid;
 	}
 	

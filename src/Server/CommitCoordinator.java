@@ -15,7 +15,7 @@ public class CommitCoordinator implements Runnable{
 	public Registry registry;
 	public ServerCommunicationInterface rmiServer;
 	public Configuration conf;
-	public ConcurrentLinkedQueue<ProcessedTransaction> processedTxn;
+	public ConcurrentLinkedQueue<ProcessedTransaction> coordinatingTxn;
 	public ConcurrentHashMap<String, ArrayList<Integer>> initiatedTxn;
 	public TransactionManager tm;
 	public long waitTime = 1500;
@@ -23,14 +23,15 @@ public class CommitCoordinator implements Runnable{
 	public CommitCoordinator(TransactionManager _tm) throws IOException{
 		this.conf= Configuration.fromFile("conf.txt");
 		this.tm = _tm;
-		this.processedTxn = _tm._processedMultiSiteTxn;
 		this.initiatedTxn = _tm._initiatedTxn;
 	}
 	
 	@Override
 	public void run(){
+		
+		//TODO: used coordinatinMultiTxn instead of processedTxn;
 		while(true){
-			if(processedTxn.size() == 0){
+			if(coordinatingTxn.size() == 0){
 				try {
 					Thread.sleep(500);
 				} catch (InterruptedException e) {
@@ -38,14 +39,11 @@ public class CommitCoordinator implements Runnable{
 				}
 			}
 			else{
-				while(processedTxn.size()!=0){
-						ProcessedTransaction txn = processedTxn.poll();
-						String gid = txn.getGid();
-						//select the current server as the 2PC coordinator
-						if(initiatedTxn.containsKey(gid)){
+				while(coordinatingTxn.size()!=0){
+						
+							ProcessedTransaction txn = coordinatingTxn.poll();
+							String gid = txn.getGid();
 							//TODO:write prepare message to log
-							
-							
 							State decision = State.EMPTY;
 							//initialized a vote pool to store the vote results
 							ArrayList<State> votePool = new ArrayList<State>();
@@ -59,28 +57,28 @@ public class CommitCoordinator implements Runnable{
 										try {
 											registry = LocateRegistry.getRegistry(serverAddress, serverPort);
 											rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
-											State vote;
-											do{
 												//if the participant failed, assume it returned abort
-												vote = rmiServer.replyVote(gid);
+												State vote = rmiServer.replyVote(gid);
 												if(vote == State.OFFLINE){
 													vote = State.PREABORT;
-													break;
 												}
 												if(vote == State.TPCWAIT || vote == null){
 													Thread.sleep(500);
 												}
-											}
-											while(vote == State.TPCWAIT || vote == null);
-											
-											votePool.add(vote);
-											//make decision after receiving all the vote resuts
-											if(votePool.size() == initiatedTxn.get(gid).size() + 1){
-												if(votePool.contains(State.PREABORT))
+												
+												vote = rmiServer.replyVote(gid);
+												if(vote == State.OFFLINE || vote == State.TPCWAIT){
+													vote = State.PREABORT;
+												}
+												
+												votePool.add(vote);
+												//make decision after receiving all the vote resuts
+												
+												if(votePool.size() == initiatedTxn.get(gid).size() + 1){
+													if(votePool.contains(State.PREABORT))
 														decision = State.TPCABORT;
 													else
 														decision = State.TPCCOMMIT;
-													
 													break;
 												}
 									
@@ -128,7 +126,7 @@ public class CommitCoordinator implements Runnable{
 								}else{
 									//this won't happen
 								}
-						}
+							
 				}
 			}
 			
