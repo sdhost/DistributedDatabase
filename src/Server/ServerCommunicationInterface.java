@@ -31,6 +31,6 @@ public interface ServerCommunicationInterface extends Remote{
 	int getServerID() throws RemoteException;
 
 	//Return the multi txn log
-	MultiTxnState getMultiTxnState();
+	MultiTxnState getMultiTxnState() throws RemoteException;
 	
 }
