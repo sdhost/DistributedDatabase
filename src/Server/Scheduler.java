@@ -92,6 +92,10 @@ public class Scheduler {
 	public boolean isInServer(String tupleID){
 		return _datamanager.exist(tupleID);
 	}
+	
+	public void begin(String gid) {
+		_datamanager.Begin(gid);
+	}
 
 	public void abort(String gid) throws Exception {
 		_datamanager.Abort(gid);
@@ -106,8 +110,7 @@ public class Scheduler {
 		}
 	}
 	
-	public void commit(String gid){
-		
+	public void commit(String gid){		
 		_datamanager.Commit(gid);
 		
 		// Release all locks, held by transaction

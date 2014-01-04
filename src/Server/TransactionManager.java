@@ -54,6 +54,10 @@ public class TransactionManager implements Serializable {
 		_scheduler.commit(gid);
 	}
 	
+	public void begin(String gid) {
+		_scheduler.begin(gid);
+	}
+	
 	/**
 	 * Create new account (only on connected server)
 	 */
@@ -253,6 +257,9 @@ public class TransactionManager implements Serializable {
 		int updatedBalance2 = 0;
 		boolean error = false;
 		if(uid2AccountOnSvr == null) {
+			
+			modalPopup(gid, "Do read");
+			
 			// Read balance1 and balance2 from current connected server
 			List<ResultSet> rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid1), new Operation().read(gid, uid2)), gid, timestamp);
 			if (rs == null) {
@@ -262,6 +269,8 @@ public class TransactionManager implements Serializable {
 				ServerGUI.log("Problem with checking balance");
 				return null;
 			}
+			
+			modalPopup(gid, "Did read, do write");
 			
 			balance1 = Integer.valueOf(((String)rs.get(0).getVal()));
 			balance2 = Integer.valueOf(((String)rs.get(1).getVal()));
@@ -277,7 +286,12 @@ public class TransactionManager implements Serializable {
 				return null;
 			}
 			
+			modalPopup(gid, "Did write, do commit");
+			
 			this._scheduler.commit(gid);
+			
+			modalPopup(gid, "Did commit");
+			
 			// Return balance of account belonging to uid1
 			return String.valueOf(updatedBalance1);
 		}else{
