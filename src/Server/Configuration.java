@@ -20,7 +20,7 @@ public class Configuration {
 	public Configuration(List<String> servers) {
 		_serverIdToServer = new HashMap<Integer, String>();
 		for (int i = 0; i < servers.size(); i++)
-			_serverIdToServer.put(i, servers.get(i));
+			_serverIdToServer.put(i+1, servers.get(i));
 	}
 	
 	/**

@@ -140,7 +140,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	}
 	
 	private String nextUid(){
-		String uid = String.valueOf(uniqueServerId * 10^shift + serialId);
+		String uid = String.valueOf(uniqueServerId * (int)Math.pow(10,shift) + serialId);
 		serialId++;
 		return uid;
 	}
