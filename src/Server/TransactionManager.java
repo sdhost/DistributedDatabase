@@ -266,7 +266,7 @@ public class TransactionManager implements Serializable {
 			balance1 = Integer.valueOf(((String)rs.get(0).getVal()));
 			balance2 = Integer.valueOf(((String)rs.get(1).getVal()));
 			updatedBalance1 = balance1 - amount;
-			updatedBalance2 = balance2 - amount;
+			updatedBalance2 = balance2 + amount;
 			
 			rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(updatedBalance1)), new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp);
 			if (rs == null) {
@@ -284,7 +284,7 @@ public class TransactionManager implements Serializable {
 			
 			// Store gid -> remote serverid
 			_initiatedTxn.put(gid, new ArrayList<Integer>(Arrays.asList(uid2AccountOnSvr.getServerID())));
-			
+			this.multiTxnState.unfinishedTxn.put(gid, State.TPCSTART);
 			
 			modalPopup(gid, "read 2");
 			// Read balance2 from remote serverid
@@ -296,7 +296,7 @@ public class TransactionManager implements Serializable {
 			
 				balance2 = Integer.valueOf(((String)rs.get(0).getVal()));
 				//Update balance2
-				updatedBalance2 = balance2 - amount;
+				updatedBalance2 = balance2 + amount;
 				//Write to balance2
 				rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp, serverId);	
 				if (rs == null) {
@@ -317,6 +317,7 @@ public class TransactionManager implements Serializable {
 				modalPopup(gid, StepMessages.PREABORT.value);
 				ServerGUI.log("Problem with checking balance");
 				this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
+				this.multiTxnState.unfinishedTxn.put(gid, State.PREABORT);
 				error = true;
 			}else{
 				balance1 = Integer.valueOf(((String)rs.iterator().next().getVal()));
@@ -328,8 +329,10 @@ public class TransactionManager implements Serializable {
 					modalPopup(gid, StepMessages.PREABORT.value);
 					ServerGUI.log("Problem with writing updated balance");
 					this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
+					this.multiTxnState.unfinishedTxn.put(gid, State.PREABORT);
 				}else{
 					this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
+					this.multiTxnState.unfinishedTxn.put(gid, State.PRECOMMIT);
 				}
 			}
 			
@@ -367,15 +370,21 @@ public class TransactionManager implements Serializable {
 	}
 	
 	public List<ResultSet> executeRemote(List<Operation> ops, String gid, long timestamp, int sid){
+		
+		//Log the start state
+		if(this.multiTxnState.unfinishedTxn.containsKey(gid) == false){
+			this.multiTxnState.unfinishedTxn.put(gid,State.TPCSTART);
+			this._participantTxn.put(gid, sid);
+		}
+		
 		if(ops.isEmpty()){
 			this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
+			this.multiTxnState.unfinishedTxn.put(gid,State.PRECOMMIT);
 			return null;
 		}
 		
 		_scheduler.prepareTx(gid, timestamp);
-		_participantTxn.put(gid, sid);
-		//record the start log of this transaction
-		multiTxnState.unfinishedTxn.put(gid, State.TPCSTART);
+		
 		List<ResultSet> ret = this._scheduler.execute(ops, gid, timestamp);
 		if(ret == null){
 			try {
@@ -385,6 +394,7 @@ public class TransactionManager implements Serializable {
 				e.printStackTrace();
 			}
 			this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
+			this.multiTxnState.unfinishedTxn.put(gid, State.PREABORT);
 		}
 		return ret;
 	}
