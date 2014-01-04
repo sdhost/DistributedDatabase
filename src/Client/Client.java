@@ -142,7 +142,7 @@ public class Client{
 	
 	/**
 	 * Transfer some money from account uid1 to uid2
-	 * @return balance of uid1 or negative numbers in case of error
+	 * @return null if error. Otherwise "ok"
 	 */
 	public String txnTransfer(String uid1, String uid2, int amount) throws RemoteException{
 		if(!initialized){

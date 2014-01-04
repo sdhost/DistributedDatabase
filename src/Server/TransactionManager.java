@@ -189,7 +189,7 @@ public class TransactionManager implements Serializable {
 	 * @param uid1	transfer from this account (assumed on connected server)
 	 * @param uid2	transfer to this account (can be on remote server)
 	 * @param amount	amount of money to transfer
-	 * @return	balance of account belonging to uid1
+	 * @return	"1"
 	 */
 	public String txnTransfer(String gid, String uid1, String uid2, int amount,	Long timestamp) throws RemoteException {		
 		_scheduler.prepareTx(gid, timestamp);
@@ -337,8 +337,7 @@ public class TransactionManager implements Serializable {
 			}
 			while(finished == false);
 			
-			// Return balance of account belonging to uid1
-			return String.valueOf(updatedBalance1);
+			return "1";
 		}
 		
 		

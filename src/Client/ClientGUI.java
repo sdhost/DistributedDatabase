@@ -27,7 +27,7 @@ public class ClientGUI {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		args = new String[]{"127.0.1.1", "3233"};
+		args = new String[]{"127.0.1.1", "3232"};
 		if (args.length == 2) {
 			serverIp = args[0];
 			serverPort = Integer.valueOf(args[1]);
@@ -199,14 +199,12 @@ public class ClientGUI {
 				Integer transferVal = Integer.valueOf(val);
 				
 				try {
-					String balance = client.txnTransfer(selectedAccountId, toAccountId, transferVal);
-					if (balance == null) {
+					if (client.txnTransfer(selectedAccountId, toAccountId, transferVal) == null) {
 						ClientGUI.log("Couldn't transfer from account");
 						return;
 					}
-					
-					
-					ClientGUI.log("AccountId: " + selectedAccountId + " has balance " + balance);
+										
+					ClientGUI.log("Transfer ok");
 				} catch (Exception ex) {
 					 log(ex.toString());
 					 return;
