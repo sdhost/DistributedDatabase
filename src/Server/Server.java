@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Server extends java.rmi.server.UnicastRemoteObject implements DataOperationInterface, ServerCommunicationInterface{
 	private Registry registry; //RMI registry for lookup the remote objects
-	private State serverState = State.OFFLINE;
+	public State serverState = State.OFFLINE;
 	private Random random = new Random();
 	private long transactionCounter = 0;
 	private int uniqueServerId;
@@ -55,7 +55,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
         uniqueServerId = serverId;
         this.multiTxnState = new MultiTxnState();
         this.conf= Configuration.fromFile("conf.txt");
-        _tm = new TransactionManager(uniqueServerId, multiTxnState);
+        _tm = new TransactionManager(uniqueServerId, multiTxnState, this);
         
         //Make sure the uid will be valid
         this.txnStates = new ConcurrentHashMap<String,State>();
@@ -250,18 +250,21 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		return this.serverState;
 	}
 	
-	//TODO: write start log for participant txn.
 	@Override
 	public State replyVote(String gid){
-		if(serverState == State.OFFLINE)
+		TransactionManager.modalPopup(gid,"received vote request");
+		if(serverState == State.OFFLINE){
+			TransactionManager.modalPopup(gid,"send out: OFFLINE");
 			return null;
+		}
+			
 		
 		boolean found = false;
 		State vote = null;
 		Iterator<ProcessedTransaction> it = _tm._processedMultiSiteTxn.iterator();
 		while(it.hasNext()){
 			ProcessedTransaction txn = it.next();
-			if(txn.getGid().equals(gid)){
+			if(txn.getGid().equals(gid) && _tm._participantTxn.containsKey(gid)){
 				found = true;
 				vote = txn.getState();
 				break;
@@ -269,11 +272,12 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		}
 		
 		if(found == false){
+			TransactionManager.modalPopup(gid,"send out: WAIT");
 			return State.TPCWAIT;
 		}
 		else{
-			//TODO: delete this update in transaction manager
 			this.multiTxnState.unfinishedTxn.put(gid, vote);
+			TransactionManager.modalPopup(gid,"send out vote ");
 			return vote;
 		}
 		
@@ -283,10 +287,14 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	@Override
 	public String proceedVoteDecision(String gid, State decision){
 		
-		if(serverState == State.OFFLINE)
+		TransactionManager.modalPopup(gid,"received final vote result");
+		
+		if(serverState == State.OFFLINE){
+			TransactionManager.modalPopup(gid,"send out OFFLINE");
 			return null;
+		}
 		
-		
+		TransactionManager.modalPopup(gid,"process the vote decision");
 		if(_tm._participantTxn.containsKey(gid)){
 			if(decision == State.TPCCOMMIT){
 				//write commit into log
@@ -302,8 +310,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 				}
 			}
 		}
-		
-		
+		TransactionManager.modalPopup(gid,"ack the coordinator");
 		//remove the finished transaction from partitipant txns
 		_tm._participantTxn.remove(gid);
 		return gid;
@@ -313,40 +320,60 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	 * Recover from failure
 	 */
 	public void recoverServer(){
-		//check all the unfinished multi-site txn
-		for(Entry<String, State> txn : this.multiTxnState.unfinishedTxn.entrySet()){
-			String gid = txn.getKey();
-			State state = txn.getValue();
-			boolean isCoordinator = false;
+		TransactionManager.modalPopup("Revovery started. ", "");
+		
+		//txn with this server as coordinator
+		for(ProcessedTransaction txn : this.get_tm()._coordinatorTxn){
+			String gid = txn.getGid();
+			State state = this.multiTxnState.unfinishedTxn.get(gid);
 			
-			for(ProcessedTransaction t: this._tm._coordinatorTxn){
-				if(t.getGid().equals(gid)){
-					isCoordinator = true;
-					break;
-				}
-			}
 			
-			//txn with this server as coordinator
-			if(isCoordinator){
-				
+				TransactionManager.modalPopup("Recovery"," coordinator txn "+ gid);
 				
 				if(state == State.TPCSTART){
-					//do nothing	
+					//start the commit
+					TransactionManager.modalPopup("Recovery"," from TPCSTART");
+					CommitCoordinator _2PC;
+					try {
+						_2PC = new CommitCoordinator(this.get_tm(), this ,gid);
+						Thread _2PCThread = new Thread(_2PC);
+						this.get_tm()._2PCThreads.add(_2PC);
+						_2PCThread.start();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					TransactionManager.modalPopup("Recovery done"," from TPCSTART");
 				}
 				
 				if(state == State.TPCPREPARE){
-					//do nothing	
+					//resubmit the commit
+					TransactionManager.modalPopup("Recovery"," from TPCPREPARE");
+					
+					CommitCoordinator _2PC;
+					try {
+						_2PC = new CommitCoordinator(this.get_tm(), this ,gid);
+						Thread _2PCThread = new Thread(_2PC);
+						this.get_tm()._2PCThreads.add(_2PC);
+						_2PCThread.start();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					TransactionManager.modalPopup("Recovery done"," from TPCPREPARE");
 				}
 				
 				if(state == State.TPCCOMMIT || state == State.TPCABORT){
 					
 					if(state == State.TPCABORT){
+						TransactionManager.modalPopup("Recovery"," from TPCABORT");
 						try {
 							//undo == abort
 							this._tm.abort(gid);
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
+					}else if(state == State.TPCCOMMIT){
+						this._tm.commit(gid);
+						TransactionManager.modalPopup("Recovery"," from TPCCOMMIT");
 					}
 					
 					//get all acks to go into FINISH
@@ -375,94 +402,120 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 					//check if coordinator received acks from all participants
 					if(ackList.size() == this._tm._initiatedTxn.get(gid).size()){
 						multiTxnState.unfinishedTxn.remove(gid);
-						multiTxnState.finishedTxn.put(gid, State.FINISH);
+						if(state == State.TPCABORT){
+							multiTxnState.finishedTxn.put(gid, State.FINISHABORT);
+							TransactionManager.modalPopup("Recovery done"," from TPCABORT");
+						}
+						else if(state == State.TPCCOMMIT){
+							multiTxnState.finishedTxn.put(gid, State.FINISHCOMMIT);
+							TransactionManager.modalPopup("Recovery done"," from TPCCOMMIT");
+						}
+						
 						ServerGUI.log("2PC Finished with state:" + state);
 					}else{
 						//this won't happen
 					}
 					
 					//remove the finished txn
+					ProcessedTransaction target = null;
 					for(ProcessedTransaction t : this._tm._coordinatorTxn){
 						if(t.getGid().equals(gid)){
-							this._tm._coordinatorTxn.remove(t);
+							target = t;
 							break;
 						}
 					}
+					this._tm._coordinatorTxn.remove(target);
 					
 				}	
-			}
-			//txn with this server as participant
-			else{
-				
-				//before vote
-				if(state == State.TPCSTART){
-					try {
-						//undo == abort
-						this._tm.abort(gid);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-				
-				if(state == State.TPCABORT){
-					
-					//TODO: or do nothing here ?
-					try {
-						//undo == abort
-						this._tm.abort(gid);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-				
-				
-				
-				if(state == State.TPCCOMMIT){
-					//redo == do nothing
-				}
-				
-				if(state == State.PRECOMMIT || state == State.PREABORT){
-					
-					/*//consult the coordinator to see the final decision
-					int coordinatorId = this._tm._participantTxn.get(gid);
-					String address = conf.getAllServers().get(coordinatorId);
-					String serverAddress = address.split(":")[0];
-					int serverPort = Integer.valueOf(address.split(":")[1]);
-					
-					Registry registry;
-					ServerCommunicationInterface rmiServer;
-					try {
-						registry = LocateRegistry.getRegistry(serverAddress, serverPort);
-						rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
-						
-						MultiTxnState cMultiTxnState = rmiServer.getMultiTxnState();
-						while(cMultiTxnState == null){
-							Thread.sleep(500);
-							ServerGUI.log("Consuting for final decision.");
-							cMultiTxnState = rmiServer.getMultiTxnState();
-						}
-						
-						State finalDecision = cMultiTxnState.unfinishedTxn.get(gid);
-						if(finalDecision == State.TPCCOMMIT){
-							//redo == do nothing
-							this._tm._participantTxn.remove(gid);
-						}
-						
-						if(finalDecision == State.TPCABORT){
-							try {
-								//undo == abort
-								this._tm.abort(gid);
-								this._tm._participantTxn.remove(gid);
-							} catch (Exception e) {
-								e.printStackTrace();
-							}
-						}
-					} catch (RemoteException | NotBoundException | InterruptedException e) {e.printStackTrace();}
-					*/
-				}
-			}
 			
 		}
+		
+		//participant transaction
+		for(Entry<String, Integer> participant : this.get_tm()._participantTxn.entrySet()){
+			String gid = participant.getKey();
+			State state = this.multiTxnState.unfinishedTxn.get(gid);
+			TransactionManager.modalPopup("Recovery","participant txn " + gid);
+			//before vote
+			if(state == State.TPCSTART){
+				TransactionManager.modalPopup("Recovery"," from TPCSTART");
+				try {
+					//undo == abort
+					this._tm.abort(gid);
+
+					this._tm._participantTxn.remove(gid);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+
+				TransactionManager.modalPopup("Recovery done"," from TPCSTART");
+			}
+			
+			if(state == State.TPCABORT){
+
+				TransactionManager.modalPopup("Recovery"," from TPCABORT");
+				this._tm._participantTxn.remove(gid);
+				TransactionManager.modalPopup("Recovery done"," from TPCABORT");
+			}
+			
+			
+			
+			if(state == State.TPCCOMMIT){
+				//redo == do nothing
+				TransactionManager.modalPopup("Recovery"," from TPCCOMMIT");
+				this._tm._participantTxn.remove(gid);
+				TransactionManager.modalPopup("Recovery done"," from TPCCOMMIT");
+			}
+			
+			if(state == State.PRECOMMIT || state == State.PREABORT){
+				
+				if(state == State.PRECOMMIT){
+					TransactionManager.modalPopup("Recovery"," from TPCCOMMIT");
+					TransactionManager.modalPopup("Recovery done"," from TPCCOMMIT");
+				}else{
+					TransactionManager.modalPopup("Recovery"," from TPCCOMMIT");
+					TransactionManager.modalPopup("Recovery done"," from TPCCOMMIT");
+				}
+				/*//consult the coordinator to see the final decision
+				int coordinatorId = this._tm._participantTxn.get(gid);
+				String address = conf.getAllServers().get(coordinatorId);
+				String serverAddress = address.split(":")[0];
+				int serverPort = Integer.valueOf(address.split(":")[1]);
+				
+				Registry registry;
+				ServerCommunicationInterface rmiServer;
+				try {
+					registry = LocateRegistry.getRegistry(serverAddress, serverPort);
+					rmiServer = (ServerCommunicationInterface)(registry.lookup("rmiServer"));
+					
+					MultiTxnState cMultiTxnState = rmiServer.getMultiTxnState();
+					while(cMultiTxnState == null){
+						Thread.sleep(500);
+						ServerGUI.log("Consuting for final decision.");
+						cMultiTxnState = rmiServer.getMultiTxnState();
+					}
+					
+					State finalDecision = cMultiTxnState.unfinishedTxn.get(gid);
+					if(finalDecision == State.TPCCOMMIT){
+						//redo == do nothing
+						this._tm._participantTxn.remove(gid);
+					}
+					
+					if(finalDecision == State.TPCABORT){
+						try {
+							//undo == abort
+							this._tm.abort(gid);
+							this._tm._participantTxn.remove(gid);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				} catch (RemoteException | NotBoundException | InterruptedException e) {e.printStackTrace();}
+				*/
+			}
+			
+			
+		}
+		TransactionManager.modalPopup("Recovery is finished", "");
 	}
 	//Send message to other server with user specification protocol
 	//Return some message for user

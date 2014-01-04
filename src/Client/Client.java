@@ -158,7 +158,6 @@ public class Client{
 			if( s == State.FINISH)
 				return (String)rmiServer.getTxnResult(gid);
 			else if(s == State.ERROR){
-				ClientGUI.log(rmiServer.getTxnResult(gid).toString());
 				return null;
 			}
 

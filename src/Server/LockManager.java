@@ -18,7 +18,6 @@ public class LockManager {
 	private volatile ConcurrentHashMap<String, Long> txnTime;//Map<TxnId,Timestamp>, for all the transactions that hold the lock
 	
 	private volatile ConcurrentHashMap<String, LinkedList<String>> waitingQueue;// A queue for lock requests, LinkedHashMap<TupleId, LinkedList<TxnID+LockType>>
-															 // TODO: Maybe need to have a priority queue? Refined later.
 											
 	//private volatile ConcurrentHashMap<String,Map<String,String>> message; // A error message holder, Map<TxnId,Map<TxnId, ErrorMessage>>
 													// ErrorMessage will be split by tab("\t") if contains messages more than one column
@@ -162,7 +161,7 @@ public class LockManager {
 //			String mess = "I\tNo lock request exist for this transaction";
 //			newInfo.put(gid, mess);
 //			this.message.put(gid, newInfo);
-			return true;
+			return false;
 		}
 		else{//Since the simultaneous transaction will not be a lot, 
 			// we will not use separate lock list for each transaction but search the whole lock tables for this transaction

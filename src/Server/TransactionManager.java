@@ -13,11 +13,11 @@ import javax.swing.JOptionPane;
 public class TransactionManager implements Serializable {
 	private static final long serialVersionUID = -6594855415638227595L;
 	private List<ServerCommunicationInterface> neighbour_server;
-	private CommitCoordinator _2PC;	
 	private Scheduler _scheduler;
-	private Thread _2PCThread;
+	public ArrayList<CommitCoordinator>_2PCThreads;
 	private int serverId;
 	public MultiTxnState multiTxnState;
+	public static Server server;
 	
 	// Contain list of all txn, that are being 2PC coordinated by this server
 	public ConcurrentLinkedQueue<ProcessedTransaction> _coordinatorTxn;
@@ -31,18 +31,16 @@ public class TransactionManager implements Serializable {
 	// Contains participant server is, which are involved in the transfer txn initiated on this server 
 	public ConcurrentHashMap<String, ArrayList<Integer>> _initiatedTxn = new ConcurrentHashMap<String, ArrayList<Integer>>();
 	
-	public TransactionManager(int serverId, MultiTxnState multiTxnState) throws IOException {
+	public TransactionManager(int serverId, MultiTxnState multiTxnState, Server server) throws IOException {
 		this.multiTxnState = multiTxnState;
 		this.serverId = serverId;
+		this.server = server;
 		_scheduler = new Scheduler(this);
-		
+		_2PCThreads = new ArrayList<CommitCoordinator>();
 		_coordinatorTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
 		_processedMultiSiteTxn = new ConcurrentLinkedQueue<ProcessedTransaction>();
 		_participantTxn = new ConcurrentHashMap<String, Integer>();
 		
-		_2PC = new CommitCoordinator(this);
-		_2PCThread = new Thread(_2PC);
-		_2PCThread.start();
 	}
 	
 	public void abort(String gid) throws Exception {
@@ -192,6 +190,13 @@ public class TransactionManager implements Serializable {
 	 * @return	"1"
 	 */
 	public String txnTransfer(String gid, String uid1, String uid2, int amount,	Long timestamp) throws RemoteException {		
+		
+		if (uid1.equals(uid2)) {
+			ServerGUI.log("Transfer between same account is not allowed");
+			return null;
+		}
+		
+		
 		_scheduler.prepareTx(gid, timestamp);
 		
 		/**
@@ -204,10 +209,6 @@ public class TransactionManager implements Serializable {
 		} else {
 			for(ServerCommunicationInterface svr: neighbour_server) {
 				if(svr.isExist(uid2)){
-					
-					//record the start log of this transaction
-					multiTxnState.unfinishedTxn.put(gid, State.TPCSTART);
-					
 					uid2AccountOnSvr = svr;
 					uid2Exists = true;
 					break;
@@ -267,11 +268,11 @@ public class TransactionManager implements Serializable {
 			_initiatedTxn.put(gid, new ArrayList<Integer>(Arrays.asList(uid2AccountOnSvr.getServerID())));
 			this.multiTxnState.unfinishedTxn.put(gid, State.TPCSTART);
 			
-			modalPopup(gid, "read 2");
+			modalPopup(gid, "Do read on remote");
+			
 			// Read balance2 from remote serverid
 			List<ResultSet> rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().read(gid, uid2)), gid, timestamp, serverId);
 			if (rs == null) {
-				// TODO: Right?
 				modalPopup(gid, StepMessages.PREABORT.value);
 				ServerGUI.log("Problem with checking balance");
 			}else{
@@ -279,6 +280,8 @@ public class TransactionManager implements Serializable {
 				balance2 = Integer.valueOf(((String)rs.get(0).getVal()));
 				updatedBalance2 = balance2 + amount;
 
+				modalPopup(gid, "Did read, do write on remote");
+				
 				//Write to balance2
 				rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().write(gid, uid2, String.valueOf(updatedBalance2))), gid, timestamp, serverId);	
 				if (rs == null) {
@@ -290,7 +293,8 @@ public class TransactionManager implements Serializable {
 				}
 			}
 			
-			modalPopup(gid, "read 1");
+			modalPopup(gid, "Did write on remote, do read on local");
+			
 			// Read balance1 from current connected server and balance2 from connected server
 			 rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid1)), gid, timestamp);
 			if (rs == null) {
@@ -303,6 +307,9 @@ public class TransactionManager implements Serializable {
 				balance1 = Integer.valueOf(((String)rs.iterator().next().getVal()));
 				//Update balance 1
 				updatedBalance1 = balance1 - amount;
+				
+				modalPopup(gid, "Did read, do write on local");
+				
 				//Write to balance1
 				rs = _scheduler.execute(Arrays.asList(new Operation().write(gid, uid1, String.valueOf(updatedBalance1))), gid, timestamp);
 				if (rs == null) {
@@ -316,11 +323,27 @@ public class TransactionManager implements Serializable {
 				}
 			}
 			
-			modalPopup(gid, "read finished");
+			modalPopup(gid, "Did wrote on local, prepare commit");
 			//update coordinator txn state
 			for(ProcessedTransaction txn: this._processedMultiSiteTxn){
 				if(txn.getGid() == gid){
 					this._coordinatorTxn.add(new ProcessedTransaction(gid, txn.getState()));
+					
+					//create 2PC thread for this coordinator txn
+					try {
+						this.multiTxnState.unfinishedTxn.put(gid, State.TPCSTART);
+						if(this.server.serverState != State.OFFLINE){
+							CommitCoordinator _2PC = new CommitCoordinator(this, server,gid);
+							Thread _2PCThread = new Thread(_2PC);
+							this._2PCThreads.add(_2PC);
+							_2PCThread.start();
+						}
+						
+						
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					
 					break;
 				}
 			}
@@ -337,11 +360,14 @@ public class TransactionManager implements Serializable {
 			}
 			while(finished == false);
 			
-			return "1";
+			modalPopup(gid, "Did commit");
+			
+			State decision = this.multiTxnState.finishedTxn.get(gid);
+			if (decision == State.FINISHCOMMIT)
+				return "1";
+			
+			return null;
 		}
-		
-		
-		
 	}
 
 	public void initNeighbours(List<ServerCommunicationInterface> neighbours){
@@ -350,6 +376,10 @@ public class TransactionManager implements Serializable {
 	
 	public List<ResultSet> executeRemote(List<Operation> ops, String gid, long timestamp, int sid){
 		
+		//check is this server is offline
+		if(this.server.serverState == State.OFFLINE){
+			return null;
+		}
 		//Log the start state
 		if(this.multiTxnState.unfinishedTxn.containsKey(gid) == false){
 			this.multiTxnState.unfinishedTxn.put(gid,State.TPCSTART);
@@ -368,7 +398,6 @@ public class TransactionManager implements Serializable {
 			try {
 				this._scheduler.abort(gid);
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
@@ -380,8 +409,20 @@ public class TransactionManager implements Serializable {
 		return this._scheduler.isInServer(tupleId);
 	}
 	
-	public void modalPopup(String gid, String message) {
-		if (ServerGUI.getChckbxUsePopups().isSelected())
-			JOptionPane.showMessageDialog(ServerGUI.getFrame(), "gid: " + gid + ":: " + message);	
-	}
+    public static void modalPopup(String gid, String message) {
+        if (ServerGUI.getChckbxUsePopups().isSelected()) {
+            int returnVal = JOptionPane.showConfirmDialog(ServerGUI.getFrame(), "gid: " + gid + ":: " + message + "\nPress OK to continue, Press Cancel to switch server status (fail/normal) and continue", "Waits", JOptionPane.OK_CANCEL_OPTION);
+            if (returnVal == JOptionPane.OK_OPTION) {
+                // Continue
+            } else if (returnVal == JOptionPane.CANCEL_OPTION) {
+                if (server.serverState == State.ONLINE) {
+                    // Do failure
+                    ServerGUI.doFail();   
+                } else {
+                    // Do recovery
+                    ServerGUI.doNormalOp();
+                }
+            }
+        }
+    }
 }

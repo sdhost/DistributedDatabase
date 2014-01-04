@@ -6,6 +6,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -40,7 +41,6 @@ public class HeartMonitor implements Runnable{
 			try {
 				Thread.sleep(period);
 			} catch (InterruptedException e2) {
-				// TODO Auto-generated catch block
 				e2.printStackTrace();
 			}
 			//detect heart beats of the other servers 3 seconds
@@ -59,14 +59,28 @@ public class HeartMonitor implements Runnable{
 										if(objState.equals(  State.OFFLINE)){
 											heartbeatStates.put(id, State.OFFLINE);
 											
-											//TODO:abort the transaction that coordinated by the failed server
+											ArrayList<String> target = new ArrayList<String>();
 											for(Entry<String, Integer> txn: server.get_tm()._participantTxn.entrySet()){
 												if(txn.getValue() == id){
-													server.multiTxnState.unfinishedTxn.put(txn.getKey(), State.TPCABORT);
+													String gid = txn.getKey();
+													State logState = server.multiTxnState.unfinishedTxn.get(gid);
+													
 													try {
-														server.get_tm().abort(txn.getKey());
+														if(logState == State.TPCSTART){
+															server.multiTxnState.unfinishedTxn.put(txn.getKey(), State.TPCABORT);
+															server.get_tm().abort(txn.getKey());
+															target.add(txn.getKey());
+														}
 													} catch (Exception e1) {
 														e1.printStackTrace();
+													}
+												}
+											}
+											for(String gid: target){
+												server.get_tm()._participantTxn.remove(gid);
+												for(ProcessedTransaction pt : server.get_tm()._processedMultiSiteTxn){
+													if(pt.getGid().equals(gid)){
+														pt.setState(State.TPCABORT);
 													}
 												}
 											}

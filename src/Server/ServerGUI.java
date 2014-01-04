@@ -19,12 +19,12 @@ import javax.swing.JScrollPane;
 
 public class ServerGUI {
 	private static JFrame frame;
-	private Server server;
+	private static Server server;
 	private static JTextArea txtOutput;
 	private JLabel lblServerPort;
 	private JLabel lblServerIP;
-	private JButton butFail;
-	private JButton butNormal;
+	private static JButton butFail;
+	private static JButton butNormal;
 	private static JCheckBox chckbxUsePopups;
 	
 	/**
@@ -100,10 +100,7 @@ public class ServerGUI {
 				public void actionPerformed(ActionEvent arg0) {
 					
 					// Return to normal running operation
-					butNormal.setEnabled(false);
-					butFail.setEnabled(true);
-					ServerGUI.log("Server is in normal mode");
-					server.setServerState(State.ONLINE);
+					doNormalOp();
 				}
 			});
 			
@@ -112,10 +109,7 @@ public class ServerGUI {
 				public void actionPerformed(ActionEvent arg0) {
 					
 					// Simulate failure
-					butNormal.setEnabled(true);
-					butFail.setEnabled(false);
-					ServerGUI.log("Server is in failure mode");
-					server.setServerState(State.OFFLINE);					
+					doFail();
 				}
 			});
 			butFail.setBounds(473, 34, 114, 25);
@@ -147,6 +141,29 @@ public class ServerGUI {
 			return;
 		}
 		log("Ready...");
+	}
+	
+	public static void doFail() {
+		if (!butNormal.isEnabled()) {
+			butNormal.setEnabled(true);
+			butFail.setEnabled(false);
+			ServerGUI.log("Server is in failure mode");
+			server.setServerState(State.OFFLINE);
+			for(CommitCoordinator t : server.get_tm()._2PCThreads){
+				t.kill();
+			}
+			server.get_tm()._2PCThreads.clear();	
+		}
+	}
+	
+	public static void doNormalOp() {
+		if (butNormal.isEnabled()) {
+			butNormal.setEnabled(false);
+			butFail.setEnabled(true);
+			ServerGUI.log("Server is in normal mode");
+			server.recoverServer();
+			server.setServerState(State.ONLINE);	
+		}
 	}
 	
 	public static void log(String text) {
