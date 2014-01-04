@@ -66,14 +66,15 @@ public class CommitCoordinator implements Runnable{
 												if(vote == null){
 													vote = State.PREABORT;
 												}
-												if(vote == State.TPCWAIT){
+												else if(vote == State.TPCWAIT){
 													Thread.sleep(500);
+													vote = rmiServer.replyVote(gid);
+													if(vote == null || vote == State.TPCWAIT){
+														vote = State.PREABORT;
+													}
 												}
 												
-												vote = rmiServer.replyVote(gid);
-												if(vote == null || vote == State.TPCWAIT){
-													vote = State.PREABORT;
-												}
+												
 												
 												votePool.add(vote);
 												//make decision after receiving all the vote resuts
@@ -113,6 +114,7 @@ public class CommitCoordinator implements Runnable{
 											String ack = rmiServer.proceedVoteDecision(gid, decision);
 											while(ack == null){
 												Thread.sleep(500);
+												ServerGUI.log("Waiting for ack from server: " + cid);
 												ack = rmiServer.proceedVoteDecision(gid, decision);
 											}
 											ackList.add(cid);
@@ -136,7 +138,7 @@ public class CommitCoordinator implements Runnable{
 										multiTxnState.unfinishedTxn.remove(gid);
 										multiTxnState.finishedTxn.put(gid, State.FINISH);
 									}
-									ServerGUI.log("Finished with state:" + decision);
+									ServerGUI.log("2PC Finished with state:" + decision);
 									
 								}else{
 									//this won't happen

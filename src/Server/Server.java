@@ -274,7 +274,8 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			return State.TPCWAIT;
 		}
 		else{
-			multiTxnState.unfinishedTxn.put(gid, vote);
+			//TODO: delete this update in transaction manager
+			this.multiTxnState.unfinishedTxn.put(gid, vote);
 			return vote;
 		}
 		
@@ -330,11 +331,12 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			//txn with this server as coordinator
 			if(isCoordinator){
 				
-				if(state == State.TPCPREPARE){
+				
+				if(state == State.TPCSTART){
 					//do nothing	
 				}
 				
-				if(state == State.TPCSTART){
+				if(state == State.TPCPREPARE){
 					//do nothing	
 				}
 				
@@ -365,15 +367,18 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 								String ack = rmiServer.proceedVoteDecision(gid, state);
 								while(ack == null){
 									Thread.sleep(500);
+									ServerGUI.log("Waiting for ack from server: " + cid);
 									ack = rmiServer.proceedVoteDecision(gid, state);
 								}
 								ackList.add(cid);
 							}catch (RemoteException | NotBoundException | InterruptedException e1) {continue;}
 					}
+					
 					//check if coordinator received acks from all participants
 					if(ackList.size() == this._tm._initiatedTxn.get(gid).size()){
 						multiTxnState.unfinishedTxn.remove(gid);
 						multiTxnState.finishedTxn.put(gid, State.FINISH);
+						ServerGUI.log("2PC Finished with state:" + state);
 					}else{
 						//this won't happen
 					}
@@ -402,6 +407,8 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 				}
 				
 				if(state == State.TPCABORT){
+					
+					//TODO: or do nothing here ?
 					try {
 						//undo == abort
 						this._tm.abort(gid);
@@ -417,7 +424,8 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 				}
 				
 				if(state == State.PRECOMMIT || state == State.PREABORT){
-					//consult the coordinator to see the final decision
+					
+					/*//consult the coordinator to see the final decision
 					int coordinatorId = this._tm._participantTxn.get(gid);
 					String address = conf.getAllServers().get(coordinatorId);
 					String serverAddress = address.split(":")[0];
@@ -432,24 +440,27 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 						MultiTxnState cMultiTxnState = rmiServer.getMultiTxnState();
 						while(cMultiTxnState == null){
 							Thread.sleep(500);
+							ServerGUI.log("Consuting for final decision.");
 							cMultiTxnState = rmiServer.getMultiTxnState();
 						}
 						
 						State finalDecision = cMultiTxnState.unfinishedTxn.get(gid);
 						if(finalDecision == State.TPCCOMMIT){
 							//redo == do nothing
+							this._tm._participantTxn.remove(gid);
 						}
 						
 						if(finalDecision == State.TPCABORT){
 							try {
 								//undo == abort
 								this._tm.abort(gid);
+								this._tm._participantTxn.remove(gid);
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
 						}
 					} catch (RemoteException | NotBoundException | InterruptedException e) {e.printStackTrace();}
-					
+					*/
 				}
 			}
 			
