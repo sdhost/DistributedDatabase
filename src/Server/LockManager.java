@@ -68,7 +68,7 @@ public class LockManager {
 			boolean wait = false;
 			boolean abortOther = false;
 			for(Entry<String, Boolean> e:oldLock.entrySet()){
-				if(e.getKey() == gid)
+				if(e.getKey().equals(gid))
 					continue;
 				if(e.getValue() || type){
 					if(this.txnTime.get(e.getKey()) > this.txnTime.get(gid)){

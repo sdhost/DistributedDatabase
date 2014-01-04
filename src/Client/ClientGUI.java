@@ -27,7 +27,7 @@ public class ClientGUI {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		args = new String[]{"10.94.1.198", "3232"};
+		args = new String[]{"127.0.1.1", "3233"};
 		if (args.length == 2) {
 			serverIp = args[0];
 			serverPort = Integer.valueOf(args[1]);
