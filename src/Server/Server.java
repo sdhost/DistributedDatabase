@@ -251,33 +251,31 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 	public State heartBeat() throws RemoteException {
 		return this.serverState;
 	}
+	
 	//TODO: write start log for participant txn.
 	@Override
 	public State replyVote(String gid){
 		if(serverState == State.OFFLINE)
 			return null;
 		
-		ProcessedTransaction targetTxn = null;
+		boolean found = false;
+		State vote = null;
 		Iterator<ProcessedTransaction> it = _tm._processedMultiSiteTxn.iterator();
 		while(it.hasNext()){
 			ProcessedTransaction txn = it.next();
-			if(txn.getGid() == gid)
-				targetTxn = txn;
+			if(txn.getGid().equals(gid)){
+				found = true;
+				vote = txn.getState();
+				break;
+			}
 		}
 		
-		if(targetTxn == null){
+		if(found == false){
 			return State.TPCWAIT;
 		}
 		else{
-			if(targetTxn.getState() == State.PREABORT){
-				//write PREabort into log
-				multiTxnState.unfinishedTxn.put(gid, State.PREABORT);
-			}
-			if(targetTxn.getState() == State.PRECOMMIT){
-				// write PREcommit into log
-				multiTxnState.unfinishedTxn.put(gid, State.PRECOMMIT);
-			}
-			return targetTxn.getState();
+			multiTxnState.unfinishedTxn.put(gid, vote);
+			return vote;
 		}
 		
 	}
@@ -323,7 +321,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 			boolean isCoordinator = false;
 			
 			for(ProcessedTransaction t: this._tm._coordinatorTxn){
-				if(t.getGid() == gid){
+				if(t.getGid().equals(gid)){
 					isCoordinator = true;
 					break;
 				}
@@ -382,7 +380,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 					
 					//remove the finished txn
 					for(ProcessedTransaction t : this._tm._coordinatorTxn){
-						if(t.getGid() == gid){
+						if(t.getGid().equals(gid)){
 							this._tm._coordinatorTxn.remove(t);
 							break;
 						}
