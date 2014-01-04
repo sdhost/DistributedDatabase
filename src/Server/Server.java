@@ -135,7 +135,7 @@ public class Server extends java.rmi.server.UnicastRemoteObject implements DataO
 		this.txnTime.put(gid, begin);
 		this.txnStates.put(gid, State.PROCESSING);
 		this.txnResult.put(gid, "");
-		
+		_tm.begin(gid);
 		return gid;
 	}
 	

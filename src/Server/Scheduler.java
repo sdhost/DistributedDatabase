@@ -92,31 +92,47 @@ public class Scheduler {
 	public boolean isInServer(String tupleID){
 		return _datamanager.exist(tupleID);
 	}
+	
+	public void begin(String gid) {
+		_datamanager.Begin(gid);
+	}
 
-	public void abort(String gid) throws Exception {
-		_datamanager.Abort(gid);
-		
-		// Release all locks, held by transaction
-		while (_lockmanager.release(gid)) {
-			// Locks not released. Keep retrying?
-			ServerGUI.log("Locks not released for " + gid + ". Retrying...");
-			try {
-				Thread.sleep(500);	
-			}  catch (InterruptedException ex) {}
+	/**
+	 * Returns true in case transaction was aborted or previously aborted
+	 * otherwise false
+	 */
+	public boolean abort(String gid) throws Exception {
+		if (_datamanager.Abort(gid)) {
+			// Release all locks, held by transaction
+			while (_lockmanager.release(gid)) {
+				// Locks not released. Keep retrying?
+				ServerGUI.log("Locks not released for " + gid + ". Retrying...");
+				try {
+					Thread.sleep(500);	
+				}  catch (InterruptedException ex) {}
+			}
+			return true;
 		}
+		return false;
 	}
 	
-	public void commit(String gid){
-		
-		_datamanager.Commit(gid);
-		
-		// Release all locks, held by transaction
-		while (_lockmanager.release(gid)) {
-			// Locks not released. Keep retrying?
-			ServerGUI.log("Locks not released for " + gid + ". Retrying...");
-			try {
-				Thread.sleep(500);	
-			}  catch (InterruptedException ex) {}
+	
+	/**
+	 * Returns true in case transaction was committed or previously committed
+	 * otherwise false
+	 */
+	public boolean commit(String gid){		
+		if (_datamanager.Commit(gid)) {
+			// Release all locks, held by transaction
+			while (_lockmanager.release(gid)) {
+				// Locks not released. Keep retrying?
+				ServerGUI.log("Locks not released for " + gid + ". Retrying...");
+				try {
+					Thread.sleep(500);	
+				}  catch (InterruptedException ex) {}
+			}
+			return true;
 		}
+		return false;
 	}
 }
