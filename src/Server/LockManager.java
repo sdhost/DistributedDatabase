@@ -162,7 +162,7 @@ public class LockManager {
 //			String mess = "I\tNo lock request exist for this transaction";
 //			newInfo.put(gid, mess);
 //			this.message.put(gid, newInfo);
-			return true;
+			return false;
 		}
 		else{//Since the simultaneous transaction will not be a lot, 
 			// we will not use separate lock list for each transaction but search the whole lock tables for this transaction
