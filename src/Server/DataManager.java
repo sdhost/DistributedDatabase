@@ -7,6 +7,9 @@ public class DataManager {
 	private volatile Log log;	
 	private volatile ConcurrentHashMap<String, String> TupleIdToValue; 	//In memory Database, Assume Only one table, a global unique key and a value column
 	
+	// Contains states of all transactions
+	public ConcurrentHashMap<String, State> _allSeenTransactions = new ConcurrentHashMap<String,State>();
+	
 	public DataManager() {
 		TupleIdToValue = new ConcurrentHashMap<String, String>(); 
 		log = new Log();
@@ -43,25 +46,50 @@ public class DataManager {
 		return this.TupleIdToValue.containsKey(tupleID);
 	}
 	
-	public void Abort(String gid) throws Exception {
-		LinkedList<String> undoList = log.Abort(gid);
+	/**
+	 * Returns true, if tx is aborted or previously was aborted
+	 * otherwise false
+	 */
+	public boolean Abort(String gid) throws Exception {
 		
-		// TODO: Test it works!
-		// UndoList should be list{<gid\t tupleID\t oldValue\t newValue\t}
-		for (String toUndo : undoList) {
-			String curGid = toUndo.split("\t")[0];
-			String curTupleID = toUndo.split("\t")[1];
-			String curOldVal = toUndo.split("\t")[2];
-			write(curTupleID, curOldVal, curGid);
+		if (_allSeenTransactions.get(gid) == State.PREABORT)
+			return true;
+		
+		if (_allSeenTransactions.get(gid) != State.PREABORT && _allSeenTransactions.get(gid) != State.PRECOMMIT) {
+			_allSeenTransactions.put(gid, State.PREABORT);
+			
+			LinkedList<String> undoList = log.Abort(gid);
+			
+			// UndoList should be list{<gid\t tupleID\t oldValue\t newValue\t}
+			for (String toUndo : undoList) {
+				String curGid = toUndo.split("\t")[0];
+				String curTupleID = toUndo.split("\t")[1];
+				String curOldVal = toUndo.split("\t")[2];
+				write(curTupleID, curOldVal, curGid);
+			}	
+			return true;
 		}
+		return false;
 	}
 	
-	public void Commit(String gid){
-		log.Commit(gid);
+	/**
+	 * Returns true, if tx is committed or previously was committed
+	 * otherwise false
+	 */
+	public boolean Commit(String gid) {
+		if (_allSeenTransactions.get(gid) == State.PRECOMMIT)
+			return true;
+		
+		if (_allSeenTransactions.get(gid) != State.PRECOMMIT && _allSeenTransactions.get(gid) != State.PREABORT) {
+			_allSeenTransactions.put(gid, State.PRECOMMIT);
+			log.Commit(gid);
+			return true;
+		}
+		return false;
 	}
 	
-	public void Begin(String gid){
+	public void Begin(String gid) {
+		_allSeenTransactions.put(gid,  State.PROCESSING);
 		log.newTransaction(gid);
 	}
-	
 }
