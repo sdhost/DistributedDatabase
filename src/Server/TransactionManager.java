@@ -359,7 +359,6 @@ public class TransactionManager implements Serializable {
 		
 		if(ops.isEmpty()){
 			this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PRECOMMIT));
-			this.multiTxnState.unfinishedTxn.put(gid,State.PRECOMMIT);
 			return null;
 		}
 		
@@ -374,7 +373,6 @@ public class TransactionManager implements Serializable {
 				e.printStackTrace();
 			}
 			this._processedMultiSiteTxn.add(new ProcessedTransaction(gid, State.PREABORT));
-			this.multiTxnState.unfinishedTxn.put(gid, State.PREABORT);
 		}
 		return ret;
 	}
