@@ -286,7 +286,7 @@ public class TransactionManager implements Serializable {
 			_initiatedTxn.put(gid, new ArrayList<Integer>(Arrays.asList(uid2AccountOnSvr.getServerID())));
 			
 			
-			
+			modalPopup(gid, "read 2");
 			// Read balance2 from remote serverid
 			List<ResultSet> rs = uid2AccountOnSvr.remoteExecute(Arrays.asList(new Operation().read(gid, uid2)), gid, timestamp, serverId);
 			if (rs == null) {
@@ -310,6 +310,7 @@ public class TransactionManager implements Serializable {
 				}
 			}
 			
+			modalPopup(gid, "read 1");
 			// Read balance1 from current connected server and balance2 from connected server
 			 rs = _scheduler.execute(Arrays.asList(new Operation().read(gid, uid1)), gid, timestamp);
 			if (rs == null) {
@@ -332,6 +333,7 @@ public class TransactionManager implements Serializable {
 				}
 			}
 			
+			modalPopup(gid, "read finished");
 			//update coordinator txn state
 			for(ProcessedTransaction txn: this._processedMultiSiteTxn){
 				if(txn.getGid() == gid){

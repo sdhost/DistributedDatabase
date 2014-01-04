@@ -35,7 +35,7 @@ public class CommitCoordinator implements Runnable{
 		while(true){
 			if(coordinatingTxn.size() == 0){
 				try {
-					Thread.sleep(2000);
+					Thread.sleep(5000);
 					ServerGUI.log("Waiting ...");
 				} catch (InterruptedException e) {
 					e.printStackTrace();
