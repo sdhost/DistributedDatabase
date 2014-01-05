@@ -1,6 +1,7 @@
 package Server;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
@@ -34,11 +35,20 @@ public class Configuration {
 		return _workDir;
 	}
 	
-	public static Configuration fromFile(String fullPath) throws IOException {
+	public static Configuration fromFile(String filename) throws IOException {
 		ArrayList<String> servers = new ArrayList<String>();
 		
+		// Search for conf.txt file
+		File curSearchFolder = new File(getWorkDir());
+		while (!new File(curSearchFolder.getAbsolutePath() + File.separator + filename).exists()) {
+			curSearchFolder = curSearchFolder.getParentFile();
+			if (curSearchFolder == null)
+				throw new IOException();
+		}
+		
+		
 		// Read file
-		Path path = FileSystems.getDefault().getPath(".", fullPath);
+		Path path = FileSystems.getDefault().getPath(curSearchFolder.getAbsolutePath() + File.separator + filename);
 		BufferedReader reader = Files.newBufferedReader(path, Charset.defaultCharset());
 		String line = null;
 		while ( (line = reader.readLine()) != null ) {

@@ -27,12 +27,12 @@ public class ClientGUI {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		args = new String[]{"127.0.1.1", "3232"};
 		if (args.length == 2) {
 			serverIp = args[0];
 			serverPort = Integer.valueOf(args[1]);
 		} else {
 			System.out.println("Please provide serverip as first argument, and serverport as second argument");
+			System.out.println("For example: 127.0.0.1 3232");
 			return;
 		}
 		

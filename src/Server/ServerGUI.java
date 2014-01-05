@@ -131,12 +131,15 @@ public class ServerGUI {
 			txtOutput = new JTextArea();
 			scrollPane.setViewportView(txtOutput);
         } catch(UnknownHostException uhe){
+        	System.out.println(uhe.toString());
         	log(uhe.toString());
         	return;
         } catch (RemoteException re) {
+        	System.out.println(re.toString());
 			log(re.toString());
 			return;
         } catch (IOException ie) {
+        	System.out.println(ie.toString());
         	log(ie.toString());
 			return;
 		}
